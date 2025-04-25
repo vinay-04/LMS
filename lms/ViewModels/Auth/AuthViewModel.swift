@@ -30,6 +30,13 @@ class AuthViewModel: ObservableObject {
     @Published var registrationInProgress: Bool = false
     @Published var verificationCode: String = ""
 
+    // New OTP state
+    @Published var otpUserId: String?
+    @Published var showOtpSheet: Bool = false
+    @Published var otpCode: String = ""
+    @Published var registrationPassword: String = ""
+    @Published var registrationEmail: String?  // ← store for resends
+
     private let endpoint: String
     private let projectId: String
     private let databaseId: String
@@ -97,6 +104,11 @@ class AuthViewModel: ObservableObject {
         error = nil
         registrationInProgress = true
 
+        // Keep password to login after OTP verify
+        registrationPassword = password
+        // Remember email for resend flow
+        registrationEmail = email
+
         do {
             let result = try await account.create(
                 userId: ID.unique(),
@@ -122,31 +134,16 @@ class AuthViewModel: ObservableObject {
                 ]
             )
 
-            print("Creating session for new user...")
-            _ = try await account.createEmailPasswordSession(
+            // 2) Send OTP to email
+            let token = try await account.createEmailToken(
+                userId: userId,
                 email: email,
-                password: password
-            )
+                phrase: false
+            )  // Sends 6-digit code
 
-            // Get user data and update currentUser
-            let userData = try await account.get()
-            let userDoc = try await databases.getDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userData.id
-            )
-
-            if let user = parseUserFromDocument(userDoc) {
-                currentUser = user
-            }
-
-            // Send email verification
-            await verifyEmail()
-
-            // Show email verification sheet
-            showEmailVerificationSheet = true
-
-            // MFA setup will be triggered after email verification is complete
+            // Keep for verification step
+            otpUserId = token.userId
+            showOtpSheet = true
 
         } catch let appwriteError as AppwriteError {
             print(
@@ -182,6 +179,9 @@ class AuthViewModel: ObservableObject {
         print("Login attempt for: \(email)")
 
         do {
+            // Clear any existing session first
+            try? await account.deleteSession(sessionId: "current")
+
             print("Creating email session...")
             let session = try await account.createEmailPasswordSession(
                 email: email,
@@ -299,6 +299,9 @@ class AuthViewModel: ObservableObject {
                 isMfaSetupRequired = false
                 mfaSetupData = nil
                 showMfaSheet = false
+
+                // Add success message
+                successMessage = "Account setup complete with two-factor authentication!"
             }
         } catch let appwriteError as AppwriteError {
             handleAppwriteError(appwriteError)
@@ -354,29 +357,21 @@ class AuthViewModel: ObservableObject {
         successMessage = nil
 
         do {
-
-            guard let userId = currentUser?.id,
-                let email = currentUser?.email
+            guard let userId = otpUserId,
+                let email = registrationEmail
             else {
                 throw NSError(
                     domain: "LMS", code: 0,
                     userInfo: [NSLocalizedDescriptionKey: "User not found"])
             }
+
+            // Resend OTP to the same userId/email pair
             let token = try await account.createEmailToken(
                 userId: userId,
                 email: email
             )
-            successMessage = "OTP sent to your email. Please enter the 6-digit code."
 
-            try? await databases.updateDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userId,
-                data: [
-                    "verification_sent": true,
-                    "verification_sent_at": Date().ISO8601Format(),
-                ]
-            )
+            successMessage = "OTP sent to your email. Please enter the 6-digit code."
         } catch {
             self.error = "Failed to send OTP: \(error.localizedDescription)"
             print("Email OTP error:", error)
@@ -390,14 +385,16 @@ class AuthViewModel: ObservableObject {
         isLoading = true
         error = nil
 
-        guard let userId = currentUser?.id else {
-            error = "User not found"
+        guard let userId = currentUser?.id,
+            let email = currentUser?.email,
+            let fullName = currentUser?.fullName
+        else {
+            error = "User information not found"
             isLoading = false
             return
         }
 
         do {
-
             try await account.updateVerification(userId: userId, secret: code)
 
             try await databases.updateDocument(
@@ -405,11 +402,17 @@ class AuthViewModel: ObservableObject {
                 collectionId: usersCollectionId,
                 documentId: userId,
                 data: [
-                    "is_verified": true
+                    "user_id": userId,
+                    "full_name": fullName,
+                    "email": email,
+                    "role": UserRole.member.rawValue,
+                    "is_verified": true,
+                    "mfa_enabled": false,
                 ]
             )
 
-            // Update current user
+            _ = try await account.updateVerification(userId: userId, secret: code)
+
             let userDoc = try await databases.getDocument(
                 databaseId: databaseId,
                 collectionId: usersCollectionId,
@@ -418,12 +421,88 @@ class AuthViewModel: ObservableObject {
 
             if let updatedUser = parseUserFromDocument(userDoc) {
                 currentUser = updatedUser
+                authState = .authenticated(updatedUser)
             }
 
             successMessage = "Email verified successfully!"
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                self.showEmailVerificationSheet = false
+            }
         } catch {
             self.error = "Failed to verify code: \(error.localizedDescription)"
-            print("OTP verification error:", error)
+            print("Email verification error:", error)
+
+            if registrationInProgress {
+                //                try? await account.delete(
+                try? await databases.deleteDocument(
+                    databaseId: databaseId,
+                    collectionId: usersCollectionId,
+                    documentId: userId
+                )
+                currentUser = nil
+                authState = .unauthenticated
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    self.error = "Verification failed. Please register again."
+                    self.showEmailVerificationSheet = false
+                }
+            }
+        }
+
+        isLoading = false
+    }
+
+    @MainActor
+    func verifyOtpAndCompleteRegistration(code: String) async {
+        guard let userId = otpUserId else {
+            self.error = "OTP flow not initiated."
+            return
+        }
+        isLoading = true
+        error = nil
+
+        do {
+            // 👉 Use createSession(userId:secret:) to turn the 6-digit code into a logged-in session
+            let session = try await account.createSession(
+                userId: userId,
+                secret: code
+            )  // ← OTP login endpoint
+
+            // Now you have a valid session—fetch user info
+            let userData = try await account.get()
+            let userDoc = try await databases.getDocument(
+                databaseId: databaseId,
+                collectionId: usersCollectionId,
+                documentId: userData.id
+            )
+
+            // Mark user as verified in your own collection
+            try await databases.updateDocument(
+                databaseId: databaseId,
+                collectionId: usersCollectionId,
+                documentId: userData.id,
+                data: [
+                    "is_verified": true
+                ]
+            )
+
+            if let user = parseUserFromDocument(userDoc) {
+                currentUser = user
+                authState = .authenticated(user)
+            }
+
+            // Clean up OTP context
+            showOtpSheet = false
+            otpUserId = nil
+            registrationEmail = nil
+            registrationPassword = ""
+            registrationInProgress = false
+
+        } catch let appwriteError as AppwriteError {
+            handleAppwriteError(appwriteError)
+        } catch {
+            self.error = "Verification failed: \(error.localizedDescription)"
         }
 
         isLoading = false
@@ -431,31 +510,13 @@ class AuthViewModel: ObservableObject {
 
     @MainActor
     func checkEmailVerificationStatus() async {
+        // This function is no longer needed with the new approach
+        // but keeping a minimal implementation to avoid breaking code
         guard let userId = currentUser?.id else { return }
 
         do {
             let userData = try await account.get()
-
             if userData.emailVerification {
-                try await databases.updateDocument(
-                    databaseId: databaseId,
-                    collectionId: usersCollectionId,
-                    documentId: userId,
-                    data: [
-                        "is_verified": true
-                    ]
-                )
-
-                let userDoc = try await databases.getDocument(
-                    databaseId: databaseId,
-                    collectionId: usersCollectionId,
-                    documentId: userId
-                )
-
-                if let updatedUser = parseUserFromDocument(userDoc) {
-                    currentUser = updatedUser
-                }
-
                 successMessage = "Email verification complete!"
             }
         } catch {

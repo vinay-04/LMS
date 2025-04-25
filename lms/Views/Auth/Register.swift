@@ -179,7 +179,6 @@ struct RegisterView: View {
             return
         }
 
-        // Use the AuthViewModel to register the user
         Task {
             await authViewModel.registerUser(
                 fullName: fullName,
@@ -190,7 +189,6 @@ struct RegisterView: View {
     }
 }
 
-// Helper view for form fields with updated styling
 struct FormField: View {
     let title: String
     let placeholder: String

@@ -21,6 +21,12 @@ struct ContentView: View {
                 ProgressView("Authenticating...")
                     .progressViewStyle(CircularProgressViewStyle())
 
+            case .mfaRequired:
+                // Show MFA verification as a full screen view in the main flow
+                mfaVerificationView()
+                    .environmentObject(authViewModel)
+                    .transition(.opacity)
+
             case .authenticated(let user):
                 VStack {
                     switch user.role {
@@ -32,23 +38,17 @@ struct ContentView: View {
                         MemberHomeView(user: user)
                     }
                 }
-
-            case .mfaRequired:
-                SignInView()
+                .transition(.slide)
             }
         }
-        .sheet(isPresented: $authViewModel.showMfaSheet) {
-            mfaVerificationView()
+        .animation(.easeInOut, value: authViewModel.authState)
+        .sheet(isPresented: $authViewModel.showOtpSheet) {
+            EmailVerificationSheet()
                 .environmentObject(authViewModel)
         }
-        // .sheet(isPresented: $authViewModel.showEmailVerificationSheet) {
-        //     EmailVerificationSheet()
-        //         .environmentObject(authViewModel)
-        // }
         .fullScreenCover(
             isPresented: $showOnboarding,
             onDismiss: {
-                // Mark onboarding as completed when dismissed
                 UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             }
         ) {

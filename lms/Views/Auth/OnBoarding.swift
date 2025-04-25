@@ -134,22 +134,22 @@ struct OnboardingCarousel: View {
                             dismiss()
                         })
 
-                    NavigationLink(destination: RegisterView()) {
-                        Text("Register")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.white)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.black, lineWidth: 1)
-                            )
-                    }
-                    .simultaneousGesture(
-                        TapGesture().onEnded {
-                            dismiss()
-                        })
+//                    NavigationLink(destination: RegisterView()) {
+//                        Text("Register")
+//                            .fontWeight(.semibold)
+//                            .foregroundColor(.black)
+//                            .frame(maxWidth: .infinity)
+//                            .padding()
+//                            .background(Color.white)
+//                            .overlay(
+//                                RoundedRectangle(cornerRadius: 12)
+//                                    .stroke(Color.black, lineWidth: 1)
+//                            )
+//                    }
+//                    .simultaneousGesture(
+//                        TapGesture().onEnded {
+//                            dismiss()
+//                        })
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
