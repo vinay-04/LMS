@@ -16,7 +16,6 @@ struct RegisterView: View {
     @State private var agreeToTerms = false
     private let role: UserRole = .member
 
-    // Navigation state - remove redundant authState
     @State private var validationErrors: [ValidationError] = []
     @State private var navigateToSignIn = false
     @State private var showingAlert = false
@@ -24,7 +23,7 @@ struct RegisterView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
-                // Header
+
                 VStack(spacing: 16) {
                     Image(systemName: "books.vertical")
                         .resizable()
@@ -42,9 +41,8 @@ struct RegisterView: View {
                 }
                 .padding(.top, 40)
 
-                // Form
                 VStack(spacing: 20) {
-                    // Fields with matched styling
+
                     FormField(
                         title: "Full Name", placeholder: "Enter your full name", text: $fullName)
 
@@ -60,8 +58,6 @@ struct RegisterView: View {
                         title: "Confirm Password", placeholder: "Confirm your password",
                         text: $confirmPassword, isSecure: true)
 
-                    // Role selection removed - default is member
-
                     HStack(alignment: .center) {
                         Toggle("", isOn: $agreeToTerms)
                             .toggleStyle(SwitchToggleStyle(tint: .black))
@@ -73,7 +69,6 @@ struct RegisterView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    // Display validation errors
                     if !validationErrors.isEmpty {
                         VStack(alignment: .leading, spacing: 5) {
                             ForEach(validationErrors) { error in
@@ -88,7 +83,6 @@ struct RegisterView: View {
 
                 Spacer()
 
-                // Register button
                 Button(action: registerUser) {
                     if authViewModel.isLoading {
                         ProgressView()
@@ -110,7 +104,6 @@ struct RegisterView: View {
                 .disabled(!formIsValid || authViewModel.isLoading)
                 .opacity(formIsValid ? 1 : 0.7)
 
-                // Sign In link
                 HStack {
                     Text("Already have an account?")
                         .foregroundColor(.gray)
@@ -148,7 +141,6 @@ struct RegisterView: View {
         }
     }
 
-    // Computed property to check if form is valid
     private var formIsValid: Bool {
         let errors = RegisterRequest.validate(
             fullName: fullName,
@@ -159,9 +151,8 @@ struct RegisterView: View {
         return errors.isEmpty && agreeToTerms
     }
 
-    // Function to handle user registration
     private func registerUser() {
-        // Validate form
+
         validationErrors = RegisterRequest.validate(
             fullName: fullName,
             email: email,

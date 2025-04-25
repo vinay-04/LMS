@@ -8,8 +8,6 @@
 import Foundation
 import UIKit
 
-// MARK: - User Model
-
 struct User: Codable, Identifiable {
     let id: String
     let fullName: String
@@ -73,8 +71,6 @@ enum Permission: String, Codable, CaseIterable {
     case systemConfig = "system:config"
 }
 
-// MARK: - Request Models
-
 struct RegisterRequest: Codable {
     let fullName: String
     let email: String
@@ -98,8 +94,6 @@ struct LoginRequest: Codable {
         case password
     }
 }
-
-// MARK: - Response Models
 
 struct AuthResponse: Codable {
     let userId: String
@@ -132,8 +126,6 @@ struct Session: Codable {
         case mfaPending = "mfa_pending"
     }
 }
-
-// MARK: - MFA Models
 
 struct MfaChallenge: Codable {
     let id: String
@@ -177,8 +169,6 @@ enum MfaFactorType: String, Codable {
     case email = "email"
 }
 
-// MARK: - Auth State
-
 enum AuthState: Equatable {
     case unauthenticated
     case authenticating
@@ -203,8 +193,6 @@ enum AuthState: Equatable {
         }
     }
 }
-
-// MARK: - Validation Helpers
 
 struct ValidationError: Identifiable {
     let id = UUID()

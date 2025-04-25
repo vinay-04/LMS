@@ -86,7 +86,6 @@ struct onboardingView: View {
     }
 }
 
-// Modify the OnboardingCarousel struct to include a dismiss binding
 struct OnboardingCarousel: View {
     @State private var currentPage = 0
     @Environment(\.dismiss) private var dismiss
@@ -134,22 +133,6 @@ struct OnboardingCarousel: View {
                             dismiss()
                         })
 
-//                    NavigationLink(destination: RegisterView()) {
-//                        Text("Register")
-//                            .fontWeight(.semibold)
-//                            .foregroundColor(.black)
-//                            .frame(maxWidth: .infinity)
-//                            .padding()
-//                            .background(Color.white)
-//                            .overlay(
-//                                RoundedRectangle(cornerRadius: 12)
-//                                    .stroke(Color.black, lineWidth: 1)
-//                            )
-//                    }
-//                    .simultaneousGesture(
-//                        TapGesture().onEnded {
-//                            dismiss()
-//                        })
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 20)

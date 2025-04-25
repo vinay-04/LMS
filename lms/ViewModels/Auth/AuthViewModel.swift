@@ -30,17 +30,18 @@ class AuthViewModel: ObservableObject {
     @Published var registrationInProgress: Bool = false
     @Published var verificationCode: String = ""
 
-    // New OTP state
     @Published var otpUserId: String?
     @Published var showOtpSheet: Bool = false
     @Published var otpCode: String = ""
     @Published var registrationPassword: String = ""
-    @Published var registrationEmail: String?  // ← store for resends
+    @Published var registrationEmail: String?
 
     private let endpoint: String
     private let projectId: String
     private let databaseId: String
     private let usersCollectionId: String
+
+    private let mfaCompletionService = "mfa-completion"
 
     init() {
 
@@ -66,7 +67,7 @@ class AuthViewModel: ObservableObject {
     func checkCurrentSession() async {
         do {
             print("Checking for existing session...")
-            _ = try await account.getSession(sessionId: "current")
+            let session = try await account.getSession(sessionId: "current")
             print("Session found, fetching user data...")
 
             let userData = try await account.get()
@@ -82,9 +83,36 @@ class AuthViewModel: ObservableObject {
 
             if let user = parseUserFromDocument(userDoc) {
                 print("User document parsed: \(user.fullName)")
-                currentUser = user
-                authState = .authenticated(user)
-                print("Auth state set to authenticated from existing session")
+
+                let mfaEnabled = userDoc.data["mfa_enabled"]?.value as? Bool ?? false
+
+                if mfaEnabled && !isMfaCompleted(for: session.id, userId: userData.id) {
+                    print(
+                        "User has MFA enabled but verification incomplete, requesting verification")
+
+                    do {
+                        let challenge = try await account.createMfaChallenge(
+                            factor: .totp
+                        )
+                        mfaChallenge = MfaChallenge(
+                            id: challenge.id,
+                            userId: userData.id,
+                            createdAt: Date(),
+                            expiresAt: Date().addingTimeInterval(300)
+                        )
+
+                        showMfaSheet = true
+                        authState = .mfaRequired(mfaChallenge!)
+                    } catch {
+                        print("Failed to create MFA challenge: \(error)")
+                        self.error = "MFA verification required. Please sign in again."
+                        await logout()
+                    }
+                } else {
+                    currentUser = user
+                    authState = .authenticated(user)
+                    print("Auth state set to authenticated from existing session")
+                }
             } else {
                 print("Failed to parse user document")
                 authState = .unauthenticated
@@ -104,9 +132,8 @@ class AuthViewModel: ObservableObject {
         error = nil
         registrationInProgress = true
 
-        // Keep password to login after OTP verify
         registrationPassword = password
-        // Remember email for resend flow
+
         registrationEmail = email
 
         do {
@@ -134,14 +161,12 @@ class AuthViewModel: ObservableObject {
                 ]
             )
 
-            // 2) Send OTP to email
             let token = try await account.createEmailToken(
                 userId: userId,
                 email: email,
                 phrase: false
-            )  // Sends 6-digit code
+            )
 
-            // Keep for verification step
             otpUserId = token.userId
             showOtpSheet = true
 
@@ -179,7 +204,7 @@ class AuthViewModel: ObservableObject {
         print("Login attempt for: \(email)")
 
         do {
-            // Clear any existing session first
+
             try? await account.deleteSession(sessionId: "current")
 
             print("Creating email session...")
@@ -212,12 +237,13 @@ class AuthViewModel: ObservableObject {
                         createdAt: Date(),
                         expiresAt: Date().addingTimeInterval(300)
                     )
+
                     showMfaSheet = true
                     authState = .mfaRequired(mfaChallenge!)
                 } catch {
                     print("Failed to create MFA challenge: \(error)")
                     self.error = "Failed to create MFA challenge: \(error.localizedDescription)"
-                    authState = .error(self.error ?? "Unknown error")
+                    authState = .unauthenticated
                 }
             } else {
 
@@ -300,7 +326,6 @@ class AuthViewModel: ObservableObject {
                 mfaSetupData = nil
                 showMfaSheet = false
 
-                // Add success message
                 successMessage = "Account setup complete with two-factor authentication!"
             }
         } catch let appwriteError as AppwriteError {
@@ -329,6 +354,8 @@ class AuthViewModel: ObservableObject {
 
             let userData = try await account.get()
 
+            let session = try await account.getSession(sessionId: "current")
+
             let userDoc = try await databases.getDocument(
                 databaseId: databaseId,
                 collectionId: usersCollectionId,
@@ -336,6 +363,9 @@ class AuthViewModel: ObservableObject {
             )
 
             if let user = parseUserFromDocument(userDoc) {
+
+                markMfaCompleted(for: session.id, userId: userData.id)
+
                 currentUser = user
                 authState = .authenticated(user)
                 mfaChallenge = nil
@@ -365,7 +395,6 @@ class AuthViewModel: ObservableObject {
                     userInfo: [NSLocalizedDescriptionKey: "User not found"])
             }
 
-            // Resend OTP to the same userId/email pair
             let token = try await account.createEmailToken(
                 userId: userId,
                 email: email
@@ -434,7 +463,7 @@ class AuthViewModel: ObservableObject {
             print("Email verification error:", error)
 
             if registrationInProgress {
-                //                try? await account.delete(
+
                 try? await databases.deleteDocument(
                     databaseId: databaseId,
                     collectionId: usersCollectionId,
@@ -463,13 +492,12 @@ class AuthViewModel: ObservableObject {
         error = nil
 
         do {
-            // 👉 Use createSession(userId:secret:) to turn the 6-digit code into a logged-in session
+
             let session = try await account.createSession(
                 userId: userId,
                 secret: code
-            )  // ← OTP login endpoint
+            )
 
-            // Now you have a valid session—fetch user info
             let userData = try await account.get()
             let userDoc = try await databases.getDocument(
                 databaseId: databaseId,
@@ -477,7 +505,6 @@ class AuthViewModel: ObservableObject {
                 documentId: userData.id
             )
 
-            // Mark user as verified in your own collection
             try await databases.updateDocument(
                 databaseId: databaseId,
                 collectionId: usersCollectionId,
@@ -492,7 +519,6 @@ class AuthViewModel: ObservableObject {
                 authState = .authenticated(user)
             }
 
-            // Clean up OTP context
             showOtpSheet = false
             otpUserId = nil
             registrationEmail = nil
@@ -510,8 +536,7 @@ class AuthViewModel: ObservableObject {
 
     @MainActor
     func checkEmailVerificationStatus() async {
-        // This function is no longer needed with the new approach
-        // but keeping a minimal implementation to avoid breaking code
+
         guard let userId = currentUser?.id else { return }
 
         do {
@@ -529,6 +554,11 @@ class AuthViewModel: ObservableObject {
         isLoading = true
 
         do {
+
+            if let userId = currentUser?.id {
+                KeychainHelper.standard.delete(service: mfaCompletionService, account: userId)
+            }
+
             try await account.deleteSession(sessionId: "current")
             currentUser = nil
             authState = .unauthenticated
@@ -538,6 +568,22 @@ class AuthViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    @MainActor
+    private func markMfaCompleted(for sessionId: String, userId: String) {
+
+        KeychainHelper.standard.save(sessionId, service: mfaCompletionService, account: userId)
+    }
+
+    private func isMfaCompleted(for sessionId: String, userId: String) -> Bool {
+        guard
+            let storedSessionId = KeychainHelper.standard.read(
+                service: mfaCompletionService, account: userId)
+        else {
+            return false
+        }
+        return storedSessionId == sessionId
     }
 
     private func parseUserFromAppwrite(_ appwriteUser: AppwriteModels.User<[String: AnyCodable]>)

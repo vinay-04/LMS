@@ -15,17 +15,24 @@ struct ContentView: View {
         Group {
             switch authViewModel.authState {
             case .unauthenticated, .error:
-                SignInView()  // Or your auth entry view
+                SignInView()
 
             case .authenticating:
                 ProgressView("Authenticating...")
                     .progressViewStyle(CircularProgressViewStyle())
 
             case .mfaRequired:
-                // Show MFA verification as a full screen view in the main flow
-                mfaVerificationView()
-                    .environmentObject(authViewModel)
-                    .transition(.opacity)
+
+                if let challenge = authViewModel.mfaChallenge {
+                    mfaVerificationView()
+                        .environmentObject(authViewModel)
+                        .transition(.opacity)
+                } else {
+                    ProgressView("Preparing verification...")
+                        .onAppear {
+                            authViewModel.authState = .unauthenticated
+                        }
+                }
 
             case .authenticated(let user):
                 VStack {
@@ -44,6 +51,11 @@ struct ContentView: View {
         .animation(.easeInOut, value: authViewModel.authState)
         .sheet(isPresented: $authViewModel.showOtpSheet) {
             EmailVerificationSheet()
+                .environmentObject(authViewModel)
+        }
+
+        .fullScreenCover(isPresented: $authViewModel.showMfaSheet) {
+            mfaVerificationView()
                 .environmentObject(authViewModel)
         }
         .fullScreenCover(
@@ -68,7 +80,6 @@ struct ContentView: View {
                             .padding(.bottom, 20)
                             .transition(.move(edge: .bottom))
                             .onAppear {
-                                // Auto-dismiss after 3 seconds
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                                     withAnimation {
                                         authViewModel.successMessage = nil

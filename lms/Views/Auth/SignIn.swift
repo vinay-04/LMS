@@ -19,7 +19,7 @@ struct SignInView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
-                // Header
+
                 VStack(spacing: 16) {
                     Image(systemName: "books.vertical")
                         .resizable()
@@ -37,24 +37,21 @@ struct SignInView: View {
                 }
                 .padding(.top, 60)
 
-                // Form
                 VStack(spacing: 20) {
-                    // Email field
+
                     FormField(title: "Email", placeholder: "Enter your email", text: $email)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
 
-                    // Password field
                     FormField(
                         title: "Password", placeholder: "Enter your password", text: $password,
                         isSecure: true)
 
-                    // Remember me and Forgot password
                     HStack {
                         Spacer()
 
                         Button("Forgot Password?") {
-                            // Add forgot password action
+
                         }
                         .font(.subheadline)
                         .foregroundColor(.black)
@@ -64,7 +61,6 @@ struct SignInView: View {
 
                 Spacer()
 
-                // Sign In button
                 Button(action: signIn) {
                     if authViewModel.isLoading {
                         ProgressView()
@@ -86,7 +82,6 @@ struct SignInView: View {
                 .disabled(!formIsValid || authViewModel.isLoading)
                 .opacity(formIsValid ? 1 : 0.7)
 
-                // Registration link
                 HStack {
                     Text("Don't have an account?")
                         .foregroundColor(.gray)
@@ -124,12 +119,10 @@ struct SignInView: View {
         }
     }
 
-    // Computed property to check if form is valid
     private var formIsValid: Bool {
         !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
     }
 
-    // Function to handle sign in
     private func signIn() {
         Task {
             await authViewModel.loginUser(email: email, password: password)

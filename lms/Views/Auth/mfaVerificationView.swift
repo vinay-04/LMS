@@ -15,7 +15,6 @@ struct mfaVerificationView: View {
     @State private var copiedToClipboard = false
     @State private var showAppRecommendations = false
 
-    // Colors for consistent theme
     private let primaryColor = Color.black
     private let accentColor = Color.blue
     private let backgroundColor = Color(UIColor.systemBackground)
@@ -25,7 +24,7 @@ struct mfaVerificationView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Header
+
                     if authViewModel.isMfaSetupRequired {
                         mfaSetupView
                     } else {
@@ -47,7 +46,6 @@ struct mfaVerificationView: View {
                     .font(.headline)
                 }
 
-                // Only show logout option for setup, not for regular verification
                 if authViewModel.isMfaSetupRequired {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Logout") {
@@ -58,15 +56,14 @@ struct mfaVerificationView: View {
                     }
                 }
             }
-            .interactiveDismissDisabled(true)  // Prevent dismissal by any means
+            .interactiveDismissDisabled(true)
             .background(backgroundColor)
         }
     }
 
-    // MFA Verification View
     private var mfaVerificationView: some View {
         VStack(spacing: 20) {
-            // Icon
+
             Image(systemName: "lock.shield.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -78,7 +75,6 @@ struct mfaVerificationView: View {
                 )
                 .padding(.bottom, 5)
 
-            // Title and description
             VStack(spacing: 6) {
                 Text("Verification Required")
                     .font(.title3)
@@ -91,7 +87,6 @@ struct mfaVerificationView: View {
                     .multilineTextAlignment(.center)
             }
 
-            // OTP input field - smaller and more elegant
             HStack(spacing: 8) {
                 ForEach(0..<6, id: \.self) { index in
                     OTPDigitBox(
@@ -109,18 +104,16 @@ struct mfaVerificationView: View {
                     .focused($isInputFocused)
                     .onAppear { isInputFocused = true }
                     .onChange(of: verificationCode) { newValue in
-                        // Limit to 6 digits
+
                         if newValue.count > 6 {
                             verificationCode = String(newValue.prefix(6))
                         }
 
-                        // Only allow digits
                         let filtered = newValue.filter { $0.isNumber }
                         if filtered != newValue {
                             verificationCode = filtered
                         }
 
-                        // Auto-verify when 6 digits entered
                         if newValue.count == 6 {
                             verifyCode()
                         }
@@ -128,7 +121,6 @@ struct mfaVerificationView: View {
             )
             .onTapGesture { isInputFocused = true }
 
-            // Error message
             if let error = authViewModel.error {
                 Text(error)
                     .foregroundColor(.red)
@@ -136,7 +128,6 @@ struct mfaVerificationView: View {
                     .padding(.top, -5)
             }
 
-            // Verify button
             Button(action: verifyCode) {
                 HStack {
                     if authViewModel.isLoading {
@@ -167,11 +158,10 @@ struct mfaVerificationView: View {
         .padding(.horizontal)
     }
 
-    // MFA Setup View - Streamlined
     private var mfaSetupView: some View {
         VStack(spacing: 20) {
             if let setupData = authViewModel.mfaSetupData {
-                // Icon
+
                 Image(systemName: "shield.lock.fill")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -181,7 +171,6 @@ struct mfaVerificationView: View {
                             colors: [primaryColor, .gray], startPoint: .topLeading,
                             endPoint: .bottomTrailing))
 
-                // Title and concise description
                 Text("Secure Your Account")
                     .font(.title3)
                     .fontWeight(.bold)
@@ -192,7 +181,6 @@ struct mfaVerificationView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
 
-                // QR code
                 Image(uiImage: setupData.qrCode)
                     .resizable()
                     .interpolation(.none)
@@ -202,7 +190,6 @@ struct mfaVerificationView: View {
                     .cornerRadius(8)
                     .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
 
-                // Secret key with copy button
                 HStack {
                     Text(setupData.secret)
                         .font(.system(.footnote, design: .monospaced))
@@ -215,7 +202,6 @@ struct mfaVerificationView: View {
                         UIPasteboard.general.string = setupData.secret
                         copiedToClipboard = true
 
-                        // Reset after 2 seconds
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                             copiedToClipboard = false
                         }
@@ -231,12 +217,10 @@ struct mfaVerificationView: View {
                 }
                 .padding(.bottom, 5)
 
-                // Enter verification code text
                 Text("Enter the 6-digit code from your app")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
-                // OTP input - smaller and consistent with verification view
                 HStack(spacing: 8) {
                     ForEach(0..<6, id: \.self) { index in
                         OTPDigitBox(
@@ -266,14 +250,12 @@ struct mfaVerificationView: View {
                 )
                 .onTapGesture { isInputFocused = true }
 
-                // Error message
                 if let error = authViewModel.error {
                     Text(error)
                         .foregroundColor(.red)
                         .font(.caption)
                 }
 
-                // Complete setup button
                 Button(action: {
                     Task {
                         await authViewModel.completeMfaSetup(code: verificationCode)
@@ -306,7 +288,6 @@ struct mfaVerificationView: View {
                 .disabled(verificationCode.count != 6 || authViewModel.isLoading)
                 .animation(.spring(), value: verificationCode.count == 6)
 
-                // Collapsible app recommendations
                 DisclosureGroup("Recommended apps", isExpanded: $showAppRecommendations) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("• Google Authenticator")
@@ -338,7 +319,6 @@ struct mfaVerificationView: View {
     }
 }
 
-// Reuse the OTPDigitBox from EmailVerificationSheet
 struct OTPDigitBox: View {
     let index: Int
     let verificationCode: String
@@ -346,7 +326,7 @@ struct OTPDigitBox: View {
 
     var body: some View {
         ZStack {
-            // Box background
+
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(UIColor.secondarySystemBackground))
                 .frame(width: 40, height: 50)
@@ -356,15 +336,14 @@ struct OTPDigitBox: View {
                 )
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
 
-            // Digit or cursor
             if index < verificationCode.count {
-                // Show digit
+
                 Text(String(Array(verificationCode)[index]))
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.black)
                     .transition(.scale.combined(with: .opacity))
             } else if isFocused {
-                // Show cursor for current position
+
                 Rectangle()
                     .fill(Color.black)
                     .frame(width: 2, height: 20)
@@ -376,7 +355,6 @@ struct OTPDigitBox: View {
     }
 }
 
-// Blinking modifier for cursor
 extension View {
     func blinking(duration: Double = 1.0) -> some View {
         self.modifier(BlinkingModifier(duration: duration))

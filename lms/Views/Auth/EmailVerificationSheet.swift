@@ -13,7 +13,6 @@ struct EmailVerificationSheet: View {
     @State private var isVerifying = false
     @FocusState private var isInputFocused: Bool
 
-    // Timer states
     @State private var resendCooldown: Int = 15
     @State private var isResendAvailable: Bool = false
     @State private var timer: Timer? = nil
@@ -69,12 +68,11 @@ struct EmailVerificationSheet: View {
                             isInputFocused = true
                         }
                         .onChange(of: verificationCode) { newValue in
-                            // Limit to 6 digits
+
                             if newValue.count > 6 {
                                 verificationCode = String(newValue.prefix(6))
                             }
 
-                            // Only allow digits
                             let filtered = newValue.filter { $0.isNumber }
                             if filtered != newValue {
                                 verificationCode = filtered
@@ -187,7 +185,7 @@ struct EmailVerificationSheet: View {
                 stopResendTimer()
             }
         }
-        .interactiveDismissDisabled()  // Prevent dismissal by dragging down
+        .interactiveDismissDisabled()
     }
 
     private func verifyCode() {
@@ -214,14 +212,12 @@ struct EmailVerificationSheet: View {
     }
 
     private func startResendTimer() {
-        // Reset states
+
         resendCooldown = 15
         isResendAvailable = false
 
-        // Cancel any existing timer
         stopResendTimer()
 
-        // Create a new timer
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if resendCooldown > 0 {
                 resendCooldown -= 1
@@ -245,7 +241,7 @@ struct EmailOTPDigitBox: View {
 
     var body: some View {
         ZStack {
-            // Box background
+
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(UIColor.secondarySystemBackground))
                 .frame(width: 50, height: 60)
@@ -255,15 +251,14 @@ struct EmailOTPDigitBox: View {
                 )
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
 
-            // Digit or cursor
             if index < verificationCode.count {
-                // Show digit
+
                 Text(String(Array(verificationCode)[index]))
                     .font(.system(size: 24, weight: .medium))
                     .foregroundColor(.black)
                     .transition(.scale.combined(with: .opacity))
             } else if isFocused {
-                // Show cursor for current position
+
                 Rectangle()
                     .fill(Color.black)
                     .frame(width: 2, height: 24)
@@ -275,7 +270,6 @@ struct EmailOTPDigitBox: View {
     }
 }
 
-// Blinking modifier for cursor
 extension View {
     func emailBlinking(duration: Double = 1.0) -> some View {
         self.modifier(EmailBlinkingModifier(duration: duration))

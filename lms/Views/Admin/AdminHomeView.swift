@@ -15,7 +15,7 @@ struct AdminHomeView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Admin header info
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Welcome, \(user.fullName)")
                         .font(.title2)
@@ -30,10 +30,9 @@ struct AdminHomeView: View {
                 .cornerRadius(12)
                 .padding(.horizontal)
 
-                // Admin actions section
                 ScrollView {
                     LazyVStack(spacing: 20) {
-                        // User management section
+
                         VStack(alignment: .leading, spacing: 15) {
                             Text("User Management")
                                 .font(.headline)
@@ -64,7 +63,6 @@ struct AdminHomeView: View {
                                 }
                             }
 
-                            // Show error message if exists
                             if let error = adminViewModel.actionError {
                                 Text(error)
                                     .foregroundColor(.red)
@@ -72,7 +70,6 @@ struct AdminHomeView: View {
                                     .padding(.horizontal)
                             }
 
-                            // Success message
                             if let message = adminViewModel.successMessage {
                                 Text(message)
                                     .foregroundColor(.green)
@@ -91,7 +88,6 @@ struct AdminHomeView: View {
 
                 Spacer()
 
-                // Logout button
                 Button("Logout") {
                     Task {
                         await authViewModel.logout()
@@ -151,7 +147,6 @@ struct UserListItem: View {
 
                 Spacer()
 
-                // Status indicators
                 HStack(spacing: 5) {
                     if user.isVerified {
                         Image(systemName: "checkmark.seal.fill")
@@ -165,7 +160,6 @@ struct UserListItem: View {
                 }
             }
 
-            // Role selector
             HStack {
                 Text("Role:")
                     .font(.caption)

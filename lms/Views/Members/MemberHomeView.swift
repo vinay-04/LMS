@@ -31,8 +31,6 @@ struct MemberHomeView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
 
-                // Member-specific controls will go here
-
                 Spacer()
 
                 Button("Logout") {
