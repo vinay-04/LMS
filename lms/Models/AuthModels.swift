@@ -42,11 +42,11 @@ enum UserRole: String, Codable, CaseIterable {
     var description: String {
         switch self {
         case .admin:
-            return "System Administrator"
+            return "Admin"
         case .librarian:
-            return "Library Staff"
+            return "Librarian"
         case .member:
-            return "Library Member"
+            return "Member"
         }
     }
 

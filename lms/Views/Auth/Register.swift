@@ -133,8 +133,6 @@ struct RegisterView: View {
             }
             .onChange(of: authViewModel.authState) { newValue in
                 if case .authenticated = newValue {
-                    // Successfully registered and logged in - navigate to home
-                    // This will be handled by ContentView which is observing authState
                 }
             }
             .onChange(of: authViewModel.error) { newError in

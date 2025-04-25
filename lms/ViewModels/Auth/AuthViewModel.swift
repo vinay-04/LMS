@@ -543,7 +543,7 @@ class AuthViewModel: ObservableObject {
         let message = error.message
         let code = error.code
 
-        print("Handling Appwrite error: \(message) (code: \(code))")
+        print("Handling Appwrite error: \(message)")
 
         if code == 401 {
             self.error = "Authentication failed: Invalid credentials"
@@ -552,7 +552,7 @@ class AuthViewModel: ObservableObject {
         } else if code == 409 {
             self.error = "User already exists with this email"
         } else {
-            self.error = "Error (\(code)): \(message)"
+            self.error = "Error (\(String(describing: code))): \(message)"
         }
 
         authState = .error(self.error ?? "Unknown error")
