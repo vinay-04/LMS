@@ -42,6 +42,7 @@ struct ContentView: View {
                     case .librarian:
                         LibrarianHomeView(user: user)
                     case .member:
+//                         MemberHomeView(user: user)
                         MemberHomeView(user: user)
                     }
                 }

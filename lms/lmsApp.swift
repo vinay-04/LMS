@@ -6,11 +6,16 @@
 //
 
 import SwiftUI
+import FirebaseCore
 
 @main
 struct lmsApp: App {
     @StateObject private var authViewModel = AuthViewModel()
 
+    init(){
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

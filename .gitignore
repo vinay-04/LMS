@@ -81,4 +81,4 @@ Icon[\r]
 # Project-specific files
 #
 .env
-**/GoogleService-Info.plist
+lms/GoogleService-Info.plist
