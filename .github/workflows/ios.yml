@@ -5,7 +5,7 @@ on:
     branches: [ "**" ]
   pull_request:
     branches: [ "**" ]
-
+    
 jobs:
   build:
     name: Build and Test using Xcode 16.2 and iPhone simulator
@@ -27,6 +27,7 @@ jobs:
       - name: Restore GoogleService-Info.plist
         run: |
           mkdir -p lms
+
           echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > lms/GoogleService-Info.plist
         env:
           GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
