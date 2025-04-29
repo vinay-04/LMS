@@ -2,13 +2,13 @@ name: iOS LMS Workflow
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "*" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "*" ]
 
 jobs:
   build:
-    name: Build and Test using Xcode 15.4 and iPhone simulator
+    name: Build and Test using Xcode 16.2 and iPhone simulator
     runs-on: macos-14
 
     steps:
@@ -18,9 +18,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Restore .env file
+        run: |
+          echo "$ENV_FILE_CONTENT_BASE64" | base64 --decode > .env
+        env:
+          ENV_FILE_CONTENT_BASE64: ${{ secrets.ENV_FILE_CONTENT_BASE64 }}
+
+      - name: Restore GoogleService-Info.plist
+        run: |
+          mkdir -p lms
+          echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > LMSApp/GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+
       - name: Build
         env:
-          scheme: LMS
+          scheme: lms
           platform: iOS Simulator
         run: |
           device=$(xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//")
@@ -36,7 +49,7 @@ jobs:
 
       - name: Test
         env:
-          scheme: LMS
+          scheme: lms
           platform: iOS Simulator
         run: |
           device=$(xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//")
