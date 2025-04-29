@@ -13,14 +13,14 @@ jobs:
 
     steps:
       - name: Select Xcode Version
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Build
         env:
-          scheme: MyApp # Replace with your actual scheme name
+          scheme: LMS
           platform: iOS Simulator
         run: |
           device=$(xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//")
