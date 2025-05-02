@@ -161,6 +161,10 @@ class AuthViewModel: ObservableObject {
                 ]
             )
 
+            Task {
+                await mirrorRegistration(userId: userId, email: email, fullName: fullName)
+            }
+
             let token = try await account.createEmailToken(
                 userId: userId,
                 email: email,
@@ -169,7 +173,6 @@ class AuthViewModel: ObservableObject {
 
             otpUserId = token.userId
             showOtpSheet = true
-
         } catch let appwriteError as AppwriteError {
             print(
                 "Appwrite error during registration: \(appwriteError.message) (code: \(appwriteError.code))"
@@ -328,6 +331,9 @@ class AuthViewModel: ObservableObject {
 
                 successMessage = "Account setup complete with two-factor authentication!"
             }
+            Task {
+                await mirrorMfaComplete(userId: userData.id)
+            }
         } catch let appwriteError as AppwriteError {
             handleAppwriteError(appwriteError)
         } catch {
@@ -458,6 +464,9 @@ class AuthViewModel: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 self.showEmailVerificationSheet = false
             }
+            Task {
+                await mirrorVerification(userId: userId, email: email, fullName: fullName)
+            }
         } catch {
             self.error = "Failed to verify code: \(error.localizedDescription)"
             print("Email verification error:", error)
@@ -525,6 +534,9 @@ class AuthViewModel: ObservableObject {
             registrationPassword = ""
             registrationInProgress = false
 
+            Task {
+                await mirrorOtpComplete(userId: userId)
+            }
         } catch let appwriteError as AppwriteError {
             handleAppwriteError(appwriteError)
         } catch {
