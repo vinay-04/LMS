@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p lms
 
-          echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > lms/lms/GoogleService-Info.plist
+          echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > lms/GoogleService-Info.plist
         env:
           GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
 
