@@ -1,9 +1,3 @@
-//
-//  AdminViewModel.swift
-//  lms
-//
-//  Created by VR on 24/04/25.
-//
 
 import SwiftUI
 import Foundation

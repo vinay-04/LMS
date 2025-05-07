@@ -1,10 +1,3 @@
-//
-//  LibrarianListViewModel.swift
-//  lms
-//
-//  Created by admin19 on 06/05/25.
-//
-
 import Foundation
 import FirebaseFirestore
 

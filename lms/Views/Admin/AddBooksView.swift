@@ -1,9 +1,3 @@
-//
-//  AddBooksView.swift
-//  lms
-//
-//  Created by admin19 on 06/05/25.
-//
 
 import SwiftUI
 import PhotosUI
@@ -21,6 +15,11 @@ struct AddBooksView: View {
     @State private var isLoading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    
+    // Form validation
+    @State private var isbnError: String? = nil
+    @State private var totalCopiesError: String? = nil
+    @State private var pagesError: String? = nil
     
     // Firestore & Storage references
     private let db = Firestore.firestore()
@@ -90,15 +89,21 @@ struct AddBooksView: View {
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         
-                        // White “table” container
+                        // White "table" container
                         VStack(spacing: 0) {
-                            BookDetailRow(icon: "barcode",       label: "ISBN Number",    value: $book.isbn)
+                            BookDetailRowWithValidation(
+                                icon: "barcode",
+                                label: "ISBN Number (13 digits)",
+                                value: $book.isbn,
+                                errorMessage: isbnError,
+                                onChanged: validateISBN
+                            )
                             Divider()
-                            BookDetailRow(icon: "book",          label: "Book Title",     value: $book.title)
+                            BookDetailRow(icon: "book", label: "Book Title", value: $book.title)
                             Divider()
-                            BookDetailRow(icon: "person",        label: "Author Name",    value: $book.author)
+                            BookDetailRow(icon: "person", label: "Author Name", value: $book.author)
                             Divider()
-                            BookDetailRow(icon: "theatermasks",  label: "Genre",          value: $book.genre)
+                            BookDetailRow(icon: "theatermasks", label: "Genre", value: $book.genre)
                             Divider()
                             
                             // Release Date
@@ -126,15 +131,29 @@ struct AddBooksView: View {
                             }
                             
                             Divider()
-                            BookDetailRow(icon: "globe",         label: "Language",       value: $book.language)
+                            BookDetailRow(icon: "globe", label: "Language", value: $book.language)
                             Divider()
-                            IntegerInputRow(icon: "doc.text",    label: "Pages",          text: $pagesText,       value: $book.pages)
+                            IntegerInputRowWithValidation(
+                                icon: "doc.text",
+                                label: "Pages",
+                                text: $pagesText,
+                                value: $book.pages,
+                                errorMessage: pagesError,
+                                onChanged: validatePages
+                            )
                             Divider()
-                            IntegerInputRow(icon: "books.vertical", label: "Total Copies", text: $totalCopiesText, value: $book.totalCopies)
+                            IntegerInputRowWithValidation(
+                                icon: "books.vertical",
+                                label: "Total Copies",
+                                text: $totalCopiesText,
+                                value: $book.totalCopies,
+                                errorMessage: totalCopiesError,
+                                onChanged: validateTotalCopies
+                            )
                             Divider()
-                            BookDetailRow(icon: "location",      label: "Book Location",  value: $book.location)
+                            BookDetailRow(icon: "location", label: "Book Location", value: $book.location)
                             Divider()
-                            BookDetailRow(icon: "doc.plaintext", label: "Book Summary",   value: $book.summary,   isMultiline: true)
+                            BookDetailRow(icon: "doc.plaintext", label: "Book Summary", value: $book.summary, isMultiline: true)
                         }
                         .background(Color.white)
                         .cornerRadius(12)
@@ -155,7 +174,7 @@ struct AddBooksView: View {
                         Text("Save").fontWeight(.semibold)
                     }
                 }
-                .disabled(isLoading)
+                .disabled(isLoading || !isFormValid())
             )
             .sheet(item: $activeSheet) { item in
                 switch item {
@@ -174,13 +193,85 @@ struct AddBooksView: View {
         .navigationViewStyle(StackNavigationViewStyle())
     }
     
+    // MARK: - Form Validation
+    
+    private func isFormValid() -> Bool {
+        // Validate required fields
+        if book.title.isEmpty || book.author.isEmpty || book.isbn.isEmpty {
+            return false
+        }
+        
+        // Check for validation errors
+        if isbnError != nil || totalCopiesError != nil || pagesError != nil {
+            return false
+        }
+        
+        return true
+    }
+    
+    private func validateISBN() {
+        // Clear previous error
+        isbnError = nil
+        
+        // Check if ISBN is 13 digits
+        let digitsOnly = book.isbn.filter { $0.isNumber }
+        
+        if !book.isbn.isEmpty {
+            if digitsOnly.count != 13 {
+                isbnError = "ISBN must be exactly 13 digits"
+            } else if !isValidISBN13(digitsOnly) {
+                isbnError = "Invalid ISBN-13 check digit"
+            }
+        }
+    }
+    
+    private func isValidISBN13(_ isbn: String) -> Bool {
+        guard isbn.count == 13, let _ = Int(isbn) else { return false }
+        
+        // ISBN-13 validation using the modulo 10 check
+        var sum = 0
+        for (index, char) in isbn.enumerated() {
+            guard let digit = Int(String(char)) else { return false }
+            // Multiply by 1 for even positions and 3 for odd positions
+            let weight = index % 2 == 0 ? 1 : 3
+            sum += digit * weight
+        }
+        
+        return sum % 10 == 0
+    }
+    
+    private func validateTotalCopies() {
+        totalCopiesError = nil
+        
+        if !totalCopiesText.isEmpty {
+            if !totalCopiesText.allSatisfy({ $0.isNumber }) {
+                totalCopiesError = "Must be a whole number"
+            } else if let copies = Int(totalCopiesText), copies <= 0 {
+                totalCopiesError = "Must be greater than 0"
+            }
+        }
+    }
+    
+    private func validatePages() {
+        pagesError = nil
+        
+        if !pagesText.isEmpty {
+            if !pagesText.allSatisfy({ $0.isNumber }) {
+                pagesError = "Must be a whole number"
+            } else if let pages = Int(pagesText), pages <= 0 {
+                pagesError = "Must be greater than 0"
+            }
+        }
+    }
+    
     // MARK: — Firestore Upload Logic —
     private func saveBookToFirebase() {
-        guard !book.title.isEmpty, !book.author.isEmpty, !book.isbn.isEmpty else {
-            alertMessage = "Please fill in title, author, and ISBN."
+        guard isFormValid() else {
+            alertMessage = "Please correct all form errors."
             showAlert = true
             return
         }
+        
         isLoading = true
         
         let bookRef = db.collection("books").document(book.isbn)
@@ -265,6 +356,9 @@ struct AddBooksView: View {
         book = Book()
         pagesText = ""
         totalCopiesText = ""
+        isbnError = nil
+        totalCopiesError = nil
+        pagesError = nil
     }
 }
 
@@ -303,6 +397,121 @@ struct BookDetailRow: View {
             .background(Color.white)
             .contentShape(Rectangle())
             .onTapGesture { withAnimation { isEditing = true } }
+        }
+    }
+}
+
+struct BookDetailRowWithValidation: View {
+    let icon: String, label: String
+    @Binding var value: String
+    var errorMessage: String?
+    var onChanged: (() -> Void)?
+    @State private var isEditing = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .frame(width: 24)
+                    .foregroundColor(.gray)
+                Text(label).font(.body)
+                Spacer()
+                if isEditing {
+                    TextField("", text: $value)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: UIScreen.main.bounds.width / 2.5)
+                        .placeholder(when: value.isEmpty) {
+                            Text("Value").foregroundColor(.gray)
+                        }
+                        .onChange(of: value) { _ in
+                            onChanged?()
+                        }
+                } else {
+                    Text(value.isEmpty ? "Value" : value)
+                        .foregroundColor(value.isEmpty ? .gray : .primary)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.vertical, 16)
+            .padding(.horizontal, 16)
+            .background(Color.white)
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation { isEditing = true } }
+            
+            if let error = errorMessage {
+                HStack {
+                    Spacer()
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
+                }
+                .background(Color.white)
+            }
+        }
+    }
+}
+
+struct IntegerInputRowWithValidation: View {
+    let icon: String, label: String
+    @Binding var text: String
+    @Binding var value: Int
+    var errorMessage: String?
+    var onChanged: (() -> Void)?
+    @State private var isEditing = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .frame(width: 24)
+                    .foregroundColor(.gray)
+                Text(label).font(.body)
+                Spacer()
+                if isEditing {
+                    TextField("", text: $text)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: UIScreen.main.bounds.width / 2.5)
+                        .placeholder(when: text.isEmpty) {
+                            Text("0").foregroundColor(.gray)
+                        }
+                        .onChange(of: text) { new in
+                            value = Int(new) ?? 0
+                            onChanged?()
+                        }
+                } else {
+                    Text(value > 0 ? "\(value)" : "Value")
+                        .foregroundColor(value > 0 ? .primary : .gray)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            .padding(.vertical, 16)
+            .padding(.horizontal, 16)
+            .background(Color.white)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation {
+                    isEditing = true
+                    if value > 0 && text.isEmpty {
+                        text = "\(value)"
+                    }
+                }
+            }
+            
+            if let error = errorMessage {
+                HStack {
+                    Spacer()
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
+                }
+                .background(Color.white)
+            }
         }
     }
 }
