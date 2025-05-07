@@ -6,181 +6,191 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 struct AdminHomeView: View {
-    @EnvironmentObject private var authViewModel: AuthViewModel
-    @StateObject private var adminViewModel = AdminViewModel()
     let user: User
+    @State private var showAddLibrarian = false
+    @State private var showAddBook = false
+    @State private var bookCount = "..."
+    @State private var librarianCount = "..."
+    @State private var memberCount = "..."
+    @State private var isLoading = true
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
+        ZStack(alignment: .top) {
+            // Background
+            Color(UIColor.secondarySystemBackground)
+                .ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Welcome, \(user.fullName)")
-                        .font(.title2)
+            LinearGradient(
+                colors: [Color.purple.opacity(0.3), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 150)
+            .ignoresSafeArea(edges: .top)
 
-                    Text("Role: \(user.role.description)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal)
+            ScrollView {
+                // 20‐point gaps everywhere, left‐aligned
+                VStack(alignment: .leading, spacing: 30) {
 
-                ScrollView {
-                    LazyVStack(spacing: 20) {
+                    Text("Welcome, \(user.fullName)!")
+                        .font(.title3)
+                        .fontWeight(.semibold)
 
-                        VStack(alignment: .leading, spacing: 15) {
-                            Text("User Management")
-                                .font(.headline)
-                                .padding(.horizontal)
+                    // 2×2 summary cards
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.fixed(166.5), spacing: 20),
+                            GridItem(.fixed(166.5))
+                        ],
+                        spacing: 20
+                    ) {
+                        SummaryCard(title: "BOOKS", value: bookCount)
+                            .overlay(isLoading ? ProgressView() : nil)
+                        SummaryCard(title: "LIBRARIANS", value: librarianCount)
+                            .overlay(isLoading ? ProgressView() : nil)
+                        SummaryCard(title: "REVENUE", value: "$4,134")
+                        SummaryCard(title: "MEMBERS", value: memberCount)
+                            .overlay(isLoading ? ProgressView() : nil)
+                    }
 
-                            if adminViewModel.isLoading {
-                                HStack {
-                                    Spacer()
-                                    ProgressView("Loading users...")
-                                    Spacer()
-                                }
-                                .padding()
-                            } else if let error = adminViewModel.error {
-                                Text(error)
-                                    .foregroundColor(.red)
-                                    .padding()
-                            } else {
-                                ForEach(adminViewModel.users) { user in
-                                    UserListItem(
-                                        user: user,
-                                        onRoleChange: { newRole in
-                                            Task {
-                                                await adminViewModel.updateUserRole(
-                                                    userId: user.id, newRole: newRole)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-
-                            if let error = adminViewModel.actionError {
-                                Text(error)
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                                    .padding(.horizontal)
-                            }
-
-                            if let message = adminViewModel.successMessage {
-                                Text(message)
-                                    .foregroundColor(.green)
-                                    .font(.caption)
-                                    .padding(.horizontal)
-                            }
+                    // Add Librarian
+                    Button {
+                        showAddLibrarian = true
+                    } label: {
+                        HStack {
+                            Text("Add Librarian")
+                            Spacer()
+                            Image(systemName: "person")
                         }
-                        .padding(.vertical)
+                        .padding(.horizontal, 20)
+                        .frame(height: 60)
                         .background(Color.white)
                         .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.05), radius: 5)
-                        .padding(.horizontal)
+                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
-                    .padding(.vertical)
-                }
 
-                Spacer()
-
-                Button("Logout") {
-                    Task {
-                        await authViewModel.logout()
-                    }
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.black)
-                .cornerRadius(12)
-                .padding(.horizontal)
-                .padding(.bottom)
-            }
-            .navigationTitle("Admin Dashboard")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        Task {
-                            await adminViewModel.fetchUsers()
+                    // Add Book
+                    Button {
+                        showAddBook = true
+                    } label: {
+                        HStack {
+                            Text("Add Book")
+                            Spacer()
+                            Image(systemName: "book")
                         }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
+                        .padding(.horizontal, 20)
+                        .frame(height: 60)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                     }
+
+                    // Ensure 20 pt gap above the tab bar
+                    Spacer(minLength: 20)
                 }
+                .padding(.top, 20)       // 20 pts from top of scroll view
+                .padding(.horizontal, 16)
             }
-            .onAppear {
-                Task {
-                    await adminViewModel.fetchUsers()
-                }
+        }
+        // MARK: — Modals —
+        .fullScreenCover(isPresented: $showAddLibrarian) {
+            NavigationStack {
+                AddLibrarianView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button("Back") {
+                                showAddLibrarian = false
+                            }
+                        }
+                    }
             }
+        }
+        .fullScreenCover(isPresented: $showAddBook) {
+            AddBooksView()
+        }
+        // MARK: — Data Fetching —
+        .onAppear {
+            fetchSummaryData()
+        }
+    }
+
+    private func fetchSummaryData() {
+        let db = Firestore.firestore()
+        isLoading = true
+
+        db.collection("books").getDocuments { snapshot, error in
+            if let _ = error {
+                bookCount = "Error"
+            } else {
+                bookCount = "\(snapshot?.documents.count ?? 0)"
+            }
+        }
+
+        db.collection("librarians").getDocuments { snapshot, error in
+            if let _ = error {
+                librarianCount = "Error"
+            } else {
+                librarianCount = "\(snapshot?.documents.count ?? 0)"
+            }
+        }
+
+        db.collection("members").getDocuments { snapshot, error in
+            if let _ = error {
+                memberCount = "Error"
+            } else {
+                memberCount = "\(snapshot?.documents.count ?? 0)"
+            }
+            isLoading = false
         }
     }
 }
 
-struct UserListItem: View {
-    let user: User
-    let onRoleChange: (UserRole) -> Void
-    @State private var selectedRole: UserRole
+// MARK: — SummaryCard —
 
-    init(user: User, onRoleChange: @escaping (UserRole) -> Void) {
-        self.user = user
-        self.onRoleChange = onRoleChange
-        self._selectedRole = State(initialValue: user.role)
-    }
+struct SummaryCard: View {
+    let title: String
+    let value: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(user.fullName)
-                        .font(.headline)
-
-                    Text(user.email)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                HStack(spacing: 5) {
-                    if user.isVerified {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(.green)
-                    }
-
-                    if user.mfaEnabled {
-                        Image(systemName: "lock.shield.fill")
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
-
-            HStack {
-                Text("Role:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Picker("", selection: $selectedRole) {
-                    ForEach(UserRole.allCases, id: \.self) { role in
-                        Text(role.description).tag(role)
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: selectedRole) { newRole in
-                    if newRole != user.role {
-                        onRoleChange(newRole)
-                    }
-                }
-            }
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.title3).bold()
+                .foregroundColor(.primary)
+            Spacer()
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
-        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .frame(width: 166.5, height: 83, alignment: .leading)
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
+}
+
+// MARK: — Preview —
+
+struct AdminHomeView_Previews: PreviewProvider {
+    static var previews: some View {
+        let sampleUser = User(
+            id: "admin123",
+            fullName: "Jane Doe",
+            email: "jane@example.com",
+            profileImageUrl: nil,
+            role: .admin,
+            isVerified: true,
+            mfaEnabled: false,
+            preferences: nil,
+            createdAt: Date()
+        )
+
+        NavigationStack {
+            AdminHomeView(user: sampleUser)
+        }
     }
 }

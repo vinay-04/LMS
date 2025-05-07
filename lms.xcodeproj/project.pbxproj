@@ -13,6 +13,7 @@
 		37EF0CC12DC4A68100DF65B4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 37EF0CC02DC4A68100DF65B4 /* FirebaseFirestore */; };
 		37EF0CC32DC4A68100DF65B4 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 37EF0CC22DC4A68100DF65B4 /* FirebaseStorage */; };
 		37FBA71A2DBABC9400AB2E0E /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 37FBA7192DBABC9400AB2E0E /* Appwrite */; };
+		399FE9DD2DC78E8600420094 /* CodeScanner in Frameworks */ = {isa = PBXBuildFile; productRef = 399FE9DC2DC78E8600420094 /* CodeScanner */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,7 +21,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		37FBA7362DBADBC200AB2E0E /* Exceptions for "lms" folder in "lms" target */ = {
+		3576382F2DCA361000389048 /* Exceptions for "lms" folder in "lms" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -33,7 +34,7 @@
 		37FBA6F92DBAB13A00AB2E0E /* lms */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				37FBA7362DBADBC200AB2E0E /* Exceptions for "lms" folder in "lms" target */,
+				3576382F2DCA361000389048 /* Exceptions for "lms" folder in "lms" target */,
 			);
 			path = lms;
 			sourceTree = "<group>";
@@ -50,6 +51,7 @@
 				37EF0CBF2DC4A68100DF65B4 /* FirebaseDatabase in Frameworks */,
 				37EF0CC12DC4A68100DF65B4 /* FirebaseFirestore in Frameworks */,
 				37EF0CBB2DC4A68100DF65B4 /* FirebaseAuth in Frameworks */,
+				399FE9DD2DC78E8600420094 /* CodeScanner in Frameworks */,
 				37EF0CC32DC4A68100DF65B4 /* FirebaseStorage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -99,6 +101,7 @@
 				37EF0CBE2DC4A68100DF65B4 /* FirebaseDatabase */,
 				37EF0CC02DC4A68100DF65B4 /* FirebaseFirestore */,
 				37EF0CC22DC4A68100DF65B4 /* FirebaseStorage */,
+				399FE9DC2DC78E8600420094 /* CodeScanner */,
 			);
 			productName = lms;
 			productReference = 37FBA6F72DBAB13A00AB2E0E /* lms.app */;
@@ -131,6 +134,7 @@
 			packageReferences = (
 				37FBA7182DBABC9400AB2E0E /* XCRemoteSwiftPackageReference "sdk-for-apple" */,
 				37EF0CB92DC4A68100DF65B4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				399FE9DB2DC78E8600420094 /* XCRemoteSwiftPackageReference "CodeScanner" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 37FBA6F82DBAB13A00AB2E0E /* Products */;
@@ -384,6 +388,14 @@
 				minimumVersion = 9.0.1;
 			};
 		};
+		399FE9DB2DC78E8600420094 /* XCRemoteSwiftPackageReference "CodeScanner" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twostraws/CodeScanner";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -416,6 +428,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 37FBA7182DBABC9400AB2E0E /* XCRemoteSwiftPackageReference "sdk-for-apple" */;
 			productName = Appwrite;
+		};
+		399FE9DC2DC78E8600420094 /* CodeScanner */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 399FE9DB2DC78E8600420094 /* XCRemoteSwiftPackageReference "CodeScanner" */;
+			productName = CodeScanner;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
