@@ -24,7 +24,7 @@ class AdminViewModel: ObservableObject {
         error = nil
 
         do {
-            let snap = try await db.collection("users").getDocuments()
+            let snap = try await db.collection("members").getDocuments()
             users = snap.documents.compactMap { (doc) -> User? in
                 let d = doc.data()
                 guard
@@ -67,7 +67,7 @@ class AdminViewModel: ObservableObject {
         successMessage = nil
 
         do {
-            try await db.collection("users").document(userId)
+            try await db.collection("members").document(userId)
                 .updateData(["role": newRole.rawValue])
 
             if let idx = users.firstIndex(where: { $0.id == userId }) {

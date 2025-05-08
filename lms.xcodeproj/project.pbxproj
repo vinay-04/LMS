@@ -13,7 +13,6 @@
 		37EF0CC12DC4A68100DF65B4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 37EF0CC02DC4A68100DF65B4 /* FirebaseFirestore */; };
 		37EF0CC32DC4A68100DF65B4 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 37EF0CC22DC4A68100DF65B4 /* FirebaseStorage */; };
 		37FBA71A2DBABC9400AB2E0E /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 37FBA7192DBABC9400AB2E0E /* Appwrite */; };
-		3918924A2DCBCEE300D7B5EC /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 391892492DCBCEE300D7B5EC /* FirebaseFirestoreCombine-Community */; };
 		399FE9DD2DC78E8600420094 /* CodeScanner in Frameworks */ = {isa = PBXBuildFile; productRef = 399FE9DC2DC78E8600420094 /* CodeScanner */; };
 /* End PBXBuildFile section */
 
@@ -48,7 +47,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				37FBA71A2DBABC9400AB2E0E /* Appwrite in Frameworks */,
-				3918924A2DCBCEE300D7B5EC /* FirebaseFirestoreCombine-Community in Frameworks */,
 				37EF0CBD2DC4A68100DF65B4 /* FirebaseCore in Frameworks */,
 				37EF0CBF2DC4A68100DF65B4 /* FirebaseDatabase in Frameworks */,
 				37EF0CC12DC4A68100DF65B4 /* FirebaseFirestore in Frameworks */,
@@ -65,7 +63,6 @@
 			isa = PBXGroup;
 			children = (
 				37FBA6F92DBAB13A00AB2E0E /* lms */,
-				391892482DCBCED100D7B5EC /* Frameworks */,
 				37FBA6F82DBAB13A00AB2E0E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -76,13 +73,6 @@
 				37FBA6F72DBAB13A00AB2E0E /* lms.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		391892482DCBCED100D7B5EC /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,7 +102,6 @@
 				37EF0CC02DC4A68100DF65B4 /* FirebaseFirestore */,
 				37EF0CC22DC4A68100DF65B4 /* FirebaseStorage */,
 				399FE9DC2DC78E8600420094 /* CodeScanner */,
-				391892492DCBCEE300D7B5EC /* FirebaseFirestoreCombine-Community */,
 			);
 			productName = lms;
 			productReference = 37FBA6F72DBAB13A00AB2E0E /* lms.app */;
@@ -126,7 +115,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					37FBA6F62DBAB13A00AB2E0E = {
 						CreatedOnToolsVersion = 16.2;
@@ -213,7 +202,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 9Z2TP7DLSH;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -277,7 +265,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 9Z2TP7DLSH;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -307,11 +294,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"lms/Preview Content\"";
-				DEVELOPMENT_TEAM = 9Z2TP7DLSH;
+				DEVELOPMENT_TEAM = Z4UNS23JCF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lms/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scanning QR ";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -323,7 +312,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.lms;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rs.lms;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -339,11 +328,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"lms/Preview Content\"";
-				DEVELOPMENT_TEAM = 9Z2TP7DLSH;
+				DEVELOPMENT_TEAM = Z4UNS23JCF;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = lms/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scanning QR ";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -355,7 +346,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.lms;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rs.lms;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -443,11 +434,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 37FBA7182DBABC9400AB2E0E /* XCRemoteSwiftPackageReference "sdk-for-apple" */;
 			productName = Appwrite;
-		};
-		391892492DCBCEE300D7B5EC /* FirebaseFirestoreCombine-Community */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 37EF0CB92DC4A68100DF65B4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = "FirebaseFirestoreCombine-Community";
 		};
 		399FE9DC2DC78E8600420094 /* CodeScanner */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -173,7 +173,7 @@ struct SearchResultsView: View {
 }
 
 // MARK: - Detail Row Helper
-struct DetailRow: View {
+struct Detail_Row: View {
     let icon: String
     let title: String
     let value: String

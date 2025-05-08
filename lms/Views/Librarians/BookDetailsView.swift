@@ -1,10 +1,3 @@
-//
-//  BookDetailsView.swift
-//  lms
-//
-//  Created by user@30 on 03/05/25.
-//
-
 import SwiftUI
 
 // MARK: - Book Details View
@@ -73,10 +66,10 @@ struct BookDetailsView: View {
                     
                     Divider()
                     
-                    DetailRow(icon: "tag", title: "ISBN", value: book.isbn)
-                    DetailRow(icon: "list.bullet", title: "Genre", value: book.genre)
-                    DetailRow(icon: "calendar", title: "Release Year", value: "\(book.releaseYear)")
-                    DetailRow(icon: "building", title: "Location", value: "Floor \(book.location.floor), Shelf \(book.location.shelf)")
+                    Detail_Row(icon: "tag", title: "ISBN", value: book.isbn)
+                    Detail_Row(icon: "list.bullet", title: "Genre", value: book.genre)
+                    Detail_Row(icon: "calendar", title: "Release Year", value: "\(book.releaseYear)")
+                    Detail_Row(icon: "building", title: "Location", value: "Floor \(book.location.floor), Shelf \(book.location.shelf)")
                     
                     Divider()
                     
