@@ -246,7 +246,7 @@ class LibraryData {
         name: "Vansh",
         issuedBooks: [],
         reservedBooks: [],
-        stats: LibraryStats(booksRead: 23, totalBooks: 3546)
+        stats: LibraryStats(booksRead: 0, totalBooks: 3546)
     )
 
     static let books: [LibraryBook] = [
@@ -420,7 +420,7 @@ class LibraryData {
         name: "User",
         issuedBooks: Array(books.prefix(1)),
         reservedBooks: Array(books.dropFirst().prefix(1)),
-        stats: LibraryStats(booksRead: 23, totalBooks: 3546)
+        stats: LibraryStats(booksRead: 0, totalBooks: 3546)
     )
 }
 
@@ -447,16 +447,16 @@ struct LibraryBook: Identifiable, Codable {
     var pageCount: Int?
 
     var copiesAvailable: Int { unreservedCount }
-    var currentlyBorrowed: Int { issuedCount }
+        var currentlyBorrowed: Int { issuedCount }
 
-    enum CodingKeys: String, CodingKey {
-        case id, name, isbn, genre, author
-        case releaseYear = "releaseYear"
-        case language, dateCreated, imageURL, rating, location
-        case totalCount, unreservedCount, reservedCount, issuedCount
-        case description, coverColor = "coverColor", pageCount
-    }
-
+        enum CodingKeys: String, CodingKey {
+            case id, name, isbn, genre, author
+            case releaseYear = "releaseYear"
+            case language, dateCreated, imageURL, rating, location
+            case totalCount, unreservedCount, reservedCount, issuedCount
+            case description, coverColor = "coverColor", pageCount
+        }
+    
     static var empty: LibraryBook {
         let bookId = UUID().uuidString
         return LibraryBook(
@@ -482,15 +482,11 @@ struct LibraryBook: Identifiable, Codable {
     }
 }
 
+
 struct BookLocation: Codable {
     var floor: Int
     var shelf: String
-
-    enum CodingKeys: String, CodingKey {
-        case floor, shelf
-    }
 }
-
 // MARK: - Color Helper
 
 extension Color {

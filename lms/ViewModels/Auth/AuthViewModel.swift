@@ -25,6 +25,7 @@ class AuthViewModel: ObservableObject {
     private let usersCollectionId: String = AppwriteConfig.usersCollectionId
 
     // MARK: — Published state
+    
     @Published var authState: AuthState = .unauthenticated
     @Published var currentUser: User?
     @Published var isLoading: Bool = false
@@ -66,47 +67,77 @@ class AuthViewModel: ObservableObject {
     }
 
     // MARK: — Check existing session on launch
-    func checkCurrentSession() async {
-        isLoading = true
-        error = nil
-
-        do {
-            let session = try await account.getSession(sessionId: "current")
-            let userData = try await account.get()
-            let userDoc = try await databases.getDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userData.id
-            )
-
-            guard let user = parseUserFromDocument(userDoc) else {
-                throw NSError(domain: "Auth", code: 0,
-                              userInfo: [NSLocalizedDescriptionKey: "Failed to parse user"])
-            }
-
-            let hasMfa = userDoc.data["mfa_enabled"]?.value as? Bool ?? false
-            if hasMfa && !isMfaCompleted(for: session.id, userId: userData.id) {
-                let challenge = try await account.createMfaChallenge(factor: .totp)
-                mfaChallenge = MfaChallenge(
-                    id: challenge.id,
-                    userId: userData.id,
-                    createdAt: Date(),
-                    expiresAt: Date().addingTimeInterval(300)
-                )
-                authState    = .mfaRequired(mfaChallenge!)
-                showMfaSheet = true
+    func synchronizeWithFirebase() async {
+            if let userId = currentUser?.id {
+                FirebaseService.shared.setCurrentUser(userId)
+                print("AuthViewModel: Synced user ID \(userId) to FirebaseService")
             } else {
-                currentUser = user
-                authState   = .authenticated(user)
+                print("AuthViewModel: No user ID to sync with Firebase")
             }
-        } catch {
-            authState   = .unauthenticated
-            currentUser = nil
         }
-
-        isLoading = false
-    }
-
+    
+//    func checkCurrentSession() async {
+//        isLoading = true
+//        error = nil
+//
+//        do {
+//            let session = try await account.getSession(sessionId: "current")
+//            let userData = try await account.get()
+//            let userDoc = try await databases.getDocument(
+//                databaseId: databaseId,
+//                collectionId: usersCollectionId,
+//                documentId: userData.id
+//            )
+//
+//            guard let user = parseUserFromDocument(userDoc) else {
+//                throw NSError(domain: "Auth", code: 0,
+//                              userInfo: [NSLocalizedDescriptionKey: "Failed to parse user"])
+//            }
+//
+//            let hasMfa = userDoc.data["mfa_enabled"]?.value as? Bool ?? false
+//            if hasMfa && !isMfaCompleted(for: session.id, userId: userData.id) {
+//                let challenge = try await account.createMfaChallenge(factor: .totp)
+//                mfaChallenge = MfaChallenge(
+//                    id: challenge.id,
+//                    userId: userData.id,
+//                    createdAt: Date(),
+//                    expiresAt: Date().addingTimeInterval(300)
+//                )
+//                authState    = .mfaRequired(mfaChallenge!)
+//                showMfaSheet = true
+//            } else {
+//                currentUser = user
+//                authState   = .authenticated(user)
+//            }
+//        } catch {
+//            authState   = .unauthenticated
+//            currentUser = nil
+//        }
+//
+//        isLoading = false
+//    }
+    func checkCurrentSession() async {
+            isLoading = true
+            error = nil
+            do {
+                let session = try await account.getSession(sessionId: "current")
+                let userData = try await account.get()
+                let userDoc = try await databases.getDocument(
+                    databaseId: databaseId,
+                    collectionId: usersCollectionId,
+                    documentId: userData.id
+                )
+                if let user = parseUserFromDocument(userDoc) {
+                    currentUser = user
+                    authState = .authenticated(user)
+                    await synchronizeWithFirebase() // Sync user ID
+                }
+            } catch {
+                authState = .unauthenticated
+                currentUser = nil
+            }
+            isLoading = false
+        }
     // MARK: — Registration flow
     func registerUser(fullName: String, email: String, password: String) async {
         authState = .authenticating
@@ -159,89 +190,149 @@ class AuthViewModel: ObservableObject {
     }
 
     // MARK: — Email OTP
+//    func verifyOtpAndCompleteRegistration(code: String) async {
+//        guard let userId = otpUserId else {
+//            self.error = "OTP flow not initiated"
+//            return
+//        }
+//        isLoading = true
+//        error     = nil
+//
+//        do {
+//            _ = try await account.createSession(userId: userId, secret: code)
+//            try await databases.updateDocument(
+//                databaseId: databaseId,
+//                collectionId: usersCollectionId,
+//                documentId: userId,
+//                data: ["is_verified": true]
+//            )
+//            await mirrorOtpVerification(userId: userId)
+//
+//            let userDoc = try await databases.getDocument(
+//                databaseId: databaseId,
+//                collectionId: usersCollectionId,
+//                documentId: userId
+//            )
+//            if let user = parseUserFromDocument(userDoc) {
+//                currentUser = user
+//                authState   = .authenticated(user)
+//            }
+//        } catch let appErr as AppwriteError {
+//            handleAppwriteError(appErr)
+//        } catch let swiftError {
+//            self.error = "OTP verification failed: \(swiftError.localizedDescription)"
+//            self.authState = .error(self.error!)
+//        }
+//
+//        showOtpSheet = false
+//        otpUserId    = nil
+//        isLoading    = false
+//    }
     func verifyOtpAndCompleteRegistration(code: String) async {
-        guard let userId = otpUserId else {
-            self.error = "OTP flow not initiated"
-            return
-        }
-        isLoading = true
-        error     = nil
-
-        do {
-            _ = try await account.createSession(userId: userId, secret: code)
-            try await databases.updateDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userId,
-                data: ["is_verified": true]
-            )
-            await mirrorOtpVerification(userId: userId)
-
-            let userDoc = try await databases.getDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userId
-            )
-            if let user = parseUserFromDocument(userDoc) {
-                currentUser = user
-                authState   = .authenticated(user)
+            guard let userId = otpUserId else {
+                self.error = "OTP flow not initiated"
+                return
             }
-        } catch let appErr as AppwriteError {
-            handleAppwriteError(appErr)
-        } catch let swiftError {
-            self.error = "OTP verification failed: \(swiftError.localizedDescription)"
-            self.authState = .error(self.error!)
-        }
-
-        showOtpSheet = false
-        otpUserId    = nil
-        isLoading    = false
-    }
-
-    // MARK: — Login flow
-    func loginUser(email: String, password: String) async {
-        authState = .authenticating
-        isLoading = true
-        error     = nil
-
-        do {
-            try? await account.deleteSession(sessionId: "current")
-            _ = try await account.createEmailPasswordSession(
-                email: email,
-                password: password
-            )
-
-            let userData = try await account.get()
-            let userDoc  = try await databases.getDocument(
-                databaseId: databaseId,
-                collectionId: usersCollectionId,
-                documentId: userData.id
-            )
-            let hasMfa = userDoc.data["mfa_enabled"]?.value as? Bool ?? false
-
-            if hasMfa {
-                let challenge = try await account.createMfaChallenge(factor: .totp)
-                mfaChallenge = MfaChallenge(
-                    id: challenge.id,
-                    userId: userData.id,
-                    createdAt: Date(),
-                    expiresAt: Date().addingTimeInterval(300)
+            isLoading = true
+            error = nil
+            do {
+                _ = try await account.createSession(userId: userId, secret: code)
+                try await databases.updateDocument(
+                    databaseId: databaseId,
+                    collectionId: usersCollectionId,
+                    documentId: userId,
+                    data: ["is_verified": true]
                 )
-                authState    = .mfaRequired(mfaChallenge!)
-                showMfaSheet = true
-            } else {
-                await setupMfaForUser(userId: userData.id)
+                await mirrorOtpVerification(userId: userId)
+                let userDoc = try await databases.getDocument(
+                    databaseId: databaseId,
+                    collectionId: usersCollectionId,
+                    documentId: userId
+                )
+                if let user = parseUserFromDocument(userDoc) {
+                    currentUser = user
+                    authState = .authenticated(user)
+                    await synchronizeWithFirebase() // Sync user ID
+                }
+            } catch let appErr as AppwriteError {
+                handleAppwriteError(appErr)
+            } catch let swiftError {
+                self.error = "OTP verification failed: \(swiftError.localizedDescription)"
+                self.authState = .error(self.error!)
             }
-        } catch let appErr as AppwriteError {
-            handleAppwriteError(appErr)
-        } catch let swiftError {
-            self.error = "Login error: \(swiftError.localizedDescription)"
-            self.authState = .error(self.error!)
+            showOtpSheet = false
+            otpUserId = nil
+            isLoading = false
         }
-
-        isLoading = false
-    }
-
+    // MARK: — Login flow
+//    func loginUser(email: String, password: String) async {
+//        authState = .authenticating
+//        isLoading = true
+//        error     = nil
+//
+//        do {
+//            try? await account.deleteSession(sessionId: "current")
+//            _ = try await account.createEmailPasswordSession(
+//                email: email,
+//                password: password
+//            )
+//
+//            let userData = try await account.get()
+//            let userDoc  = try await databases.getDocument(
+//                databaseId: databaseId,
+//                collectionId: usersCollectionId,
+//                documentId: userData.id
+//            )
+//            let hasMfa = userDoc.data["mfa_enabled"]?.value as? Bool ?? false
+//
+//            if hasMfa {
+//                let challenge = try await account.createMfaChallenge(factor: .totp)
+//                mfaChallenge = MfaChallenge(
+//                    id: challenge.id,
+//                    userId: userData.id,
+//                    createdAt: Date(),
+//                    expiresAt: Date().addingTimeInterval(300)
+//                )
+//                authState    = .mfaRequired(mfaChallenge!)
+//                showMfaSheet = true
+//            } else {
+//                await setupMfaForUser(userId: userData.id)
+//            }
+//        } catch let appErr as AppwriteError {
+//            handleAppwriteError(appErr)
+//        } catch let swiftError {
+//            self.error = "Login error: \(swiftError.localizedDescription)"
+//            self.authState = .error(self.error!)
+//        }
+//
+//        isLoading = false
+//    }
+    func loginUser(email: String, password: String) async {
+            authState = .authenticating
+            isLoading = true
+            error = nil
+            do {
+                try? await account.deleteSession(sessionId: "current")
+                _ = try await account.createEmailPasswordSession(email: email, password: password)
+                let userData = try await account.get()
+                let userDoc = try await databases.getDocument(
+                    databaseId: databaseId,
+                    collectionId: usersCollectionId,
+                    documentId: userData.id
+                )
+                if let user = parseUserFromDocument(userDoc) {
+                    currentUser = user
+                    authState = .authenticated(user)
+                    await synchronizeWithFirebase() // Sync user ID
+                }
+            } catch let appErr as AppwriteError {
+                handleAppwriteError(appErr)
+            } catch let swiftError {
+                self.error = "Login error: \(swiftError.localizedDescription)"
+                self.authState = .error(self.error!)
+            }
+            isLoading = false
+        }
     // MARK: — MFA Setup & Verification
     func setupMfaForUser(userId: String) async {
         do {

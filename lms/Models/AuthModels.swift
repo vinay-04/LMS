@@ -9,7 +9,6 @@ import Foundation
 import UIKit
 
 // MARK: - User Model
-
 struct User: Codable, Identifiable, Equatable {
     let id: String
     let fullName: String
@@ -31,6 +30,57 @@ struct User: Codable, Identifiable, Equatable {
         case mfaEnabled = "mfa_enabled"
         case preferences
         case createdAt = "created_at"
+    }
+}
+struct LoginRequest: Codable {
+    let email: String
+    let password: String
+
+    enum CodingKeys: String, CodingKey {
+        case email, password
+    }
+}
+
+struct RegisterRequest: Codable {
+    let fullName: String
+    let email: String
+    let password: String
+    let role: UserRole
+
+    enum CodingKeys: String, CodingKey {
+        case fullName = "full_name"
+        case email
+        case password
+        case role
+    }
+}
+
+
+struct AuthResponse: Codable {
+    let userId: String
+    let session: Session
+    let user: User?
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case session, user
+    }
+}
+
+struct Session: Codable {
+    let id: String
+    let userId: String
+    let provider: String
+    let token: String
+    let secret: String?
+    let expire: Date
+    let mfaPending: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId    = "user_id"
+        case provider, token, secret, expire
+        case mfaPending = "mfa_pending"
     }
 }
 
@@ -73,59 +123,6 @@ enum Permission: String, Codable, CaseIterable {
     case manageLoans   = "manage:loans"
     case viewOwnLoans  = "view:own_loans"
     case systemConfig  = "system:config"
-}
-
-// MARK: - Authentication Requests & Responses
-
-struct RegisterRequest: Codable {
-    let fullName: String
-    let email: String
-    let password: String
-    let role: UserRole
-
-    enum CodingKeys: String, CodingKey {
-        case fullName = "full_name"
-        case email
-        case password
-        case role
-    }
-}
-
-struct LoginRequest: Codable {
-    let email: String
-    let password: String
-
-    enum CodingKeys: String, CodingKey {
-        case email, password
-    }
-}
-
-struct AuthResponse: Codable {
-    let userId: String
-    let session: Session
-    let user: User?
-
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case session, user
-    }
-}
-
-struct Session: Codable {
-    let id: String
-    let userId: String
-    let provider: String
-    let token: String
-    let secret: String?
-    let expire: Date
-    let mfaPending: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case userId    = "user_id"
-        case provider, token, secret, expire
-        case mfaPending = "mfa_pending"
-    }
 }
 
 // MARK: - MFA Structures
