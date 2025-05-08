@@ -48,7 +48,7 @@ class MembersListViewModel: ObservableObject {
                     let docId = document.documentID
                     
                     // Check if this is a member document with fullName field (as seen in screenshot)
-                    if let fullName = data["fullName"] as? String {
+                    if let fullName = data["full_name"] as? String {
                         let id = data["id"] as? String ?? docId
                         let phone = data["phone"] as? String ?? ""
                         let email = data["email"] as? String ?? ""

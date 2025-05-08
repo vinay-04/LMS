@@ -1,4 +1,10 @@
-// File: AllFinesView.swift
+//
+//  AllFinesView.swift
+//  lms
+//
+//  Created by user3 on 08/05/25.
+//
+
 import SwiftUI
 import FirebaseFirestore
 

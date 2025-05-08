@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseFirestore
 import Combine
+import SwiftUI
 
 class BookRequestViewModel: ObservableObject {
     // Published properties for UI updates
@@ -22,9 +23,84 @@ class BookRequestViewModel: ObservableObject {
     private let db = Firestore.firestore()
     private var cancellables = Set<AnyCancellable>()
     
+    // Library Activity Type for recording activities
+    enum ActivityType: String, Codable {
+        case issue = "issue"
+        case `return` = "return"
+        case requestApproved = "request_approved"
+        case requestRejected = "request_rejected"
+        
+        var displayText: String {
+            switch self {
+            case .issue: return "Borrowed"
+            case .return: return "Returned"
+            case .requestApproved: return "Request Approved"
+            case .requestRejected: return "Request Rejected"
+            }
+        }
+        
+        var iconName: String {
+            switch self {
+            case .issue: return "arrow.up.forward.circle.fill"
+            case .return: return "arrow.down.forward.circle.fill"
+            case .requestApproved: return "checkmark.circle.fill"
+            case .requestRejected: return "xmark.circle.fill"
+            }
+        }
+        
+        var colorName: String {
+            switch self {
+            case .issue: return "orange"
+            case .return: return "green"
+            case .requestApproved: return "blue"
+            case .requestRejected: return "red"
+            }
+        }
+    }
+    
     // Debug function to help identify issues
     private func printDebugInfo(message: String) {
         print("DEBUG: \(message)")
+    }
+    
+    // Method to record activity in Firebase
+    private func recordActivity(type: ActivityType,
+                              bookID: String,
+                              bookTitle: String,
+                              memberID: String,
+                              memberName: String,
+                              dues: Double? = nil,
+                              notes: String? = nil) {
+        // Create a new document reference
+        let activityRef = db.collection("library_activities").document()
+        
+        // Prepare data for the activity
+        var activityData: [String: Any] = [
+            "type": type.rawValue,
+            "bookID": bookID,
+            "bookTitle": bookTitle,
+            "memberID": memberID,
+            "memberName": memberName,
+            "timestamp": Timestamp(date: Date())
+        ]
+        
+        // Add optional fields if they exist
+        if let dues = dues {
+            activityData["dues"] = dues
+        }
+        
+        if let notes = notes {
+            activityData["notes"] = notes
+        }
+        
+        // Save to Firestore
+        activityRef.setData(activityData) { error in
+            if let error = error {
+                print("Error recording activity: \(error.localizedDescription)")
+            } else {
+                print("Activity recorded successfully with ID: \(activityRef.documentID)")
+            }
+        }
     }
     
     // Fetch all book requests from users based on your exact Firebase structure
@@ -137,6 +213,7 @@ class BookRequestViewModel: ObservableObject {
     }
     
     // Fetch both book and user details in parallel
+    // Fetch both book and user details in parallel
     private func fetchBookAndUserDetails(for request: BookRequest, completion: @escaping (BookRequest?) -> Void) {
         var updatedRequest = request
         let dispatchGroup = DispatchGroup()
@@ -183,7 +260,7 @@ class BookRequestViewModel: ObservableObject {
                 self.printDebugInfo(message: "Found user document: \(document.documentID)")
                 
                 if let data = document.data() {
-                    updatedRequest.userName = data["name"] as? String ?? data["fullName"] as? String
+                    updatedRequest.userName = data["full_name"] as? String
                     self.printDebugInfo(message: "User name: \(String(describing: updatedRequest.userName))")
                 }
             } else {
@@ -262,9 +339,10 @@ class BookRequestViewModel: ObservableObject {
                              .collection("userbooks").document("collection")
                              .collection("issued").document(request.bookID)
         
+        let currentDate = Date()
         batch.setData([
             "bookUUID": request.bookID,
-            "issuedTimestamp": Timestamp(date: Date()),
+            "issuedTimestamp": Timestamp(date: currentDate),
             "requestedTimestamp": Timestamp(date: request.requestTimestamp),
             "userId": request.userID
         ], forDocument: issuedBookRef)
@@ -290,6 +368,34 @@ class BookRequestViewModel: ObservableObject {
                 self.printDebugInfo(message: "Error committing batch: \(error.localizedDescription)")
                 return
             }
+            
+            // Record activity in Firestore directly
+            self.recordActivity(
+                type: .requestApproved,
+                bookID: request.bookID,
+                bookTitle: self.selectedBook?.name ?? "Unknown Book",
+                memberID: request.userID,
+                memberName: request.userName ?? "Unknown Member"
+            )
+            
+            // Also use LibrarianHomeViewModel for UI updates
+            let libraryViewModel = LibrarianHomeViewModel()
+            libraryViewModel.addIssueActivity(
+                bookID: request.bookID,
+                bookTitle: self.selectedBook?.name ?? "Unknown Book",
+                memberID: request.userID
+            )
+            
+            // Create a fine record (initially with zero amount)
+            libraryViewModel.createFineRecord(
+                bookID: request.bookID,
+                bookTitle: self.selectedBook?.name ?? "Unknown Book",
+                memberID: request.userID,
+                issuedTimestamp: currentDate
+            )
+            
+            // Print debug info for fine creation
+            self.printDebugInfo(message: "Created fine record for book: \(request.bookID)")
             
             // Success
             self.printDebugInfo(message: "Successfully issued book")
@@ -352,6 +458,23 @@ class BookRequestViewModel: ObservableObject {
                 self.printDebugInfo(message: "Error committing batch: \(error.localizedDescription)")
                 return
             }
+            
+            // Record activity in Firestore directly
+            self.recordActivity(
+                type: .requestRejected,
+                bookID: request.bookID,
+                bookTitle: self.selectedBook?.name ?? "Unknown Book",
+                memberID: request.userID,
+                memberName: request.userName ?? "Unknown Member"
+            )
+            
+            // Also use LibrarianHomeViewModel for UI updates
+            let libraryViewModel = LibrarianHomeViewModel()
+            libraryViewModel.recordRequestRejected(
+                bookID: request.bookID,
+                bookTitle: self.selectedBook?.name ?? "Unknown Book",
+                memberID: request.userID
+            )
             
             // Success
             self.printDebugInfo(message: "Successfully cancelled request")

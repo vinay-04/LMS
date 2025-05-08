@@ -1,4 +1,11 @@
-// Create a new file: MemberFinesView.swift
+//
+//  MemberFinesView.swift
+//  lms
+//
+//  Created by user3 on 08/05/25.
+//
+
+
 import SwiftUI
 
 struct MemberFinesView: View {

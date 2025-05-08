@@ -335,6 +335,7 @@ struct BookWithStatus: Identifiable {
     var returnedDate: Date?
     
     enum BookBorrowStatus: String {
+        case none
         case borrowed = "Borrowed"
         case returned = "Returned"
         case reserved = "Reserved"
@@ -426,6 +427,10 @@ struct BookRow: View {
                     Text("Added to wishlist on: \(formattedDate(book.borrowedDate))")
                         .font(.caption)
                         .foregroundColor(.gray)
+                case .none:
+                    Text("None")
+                        .foregroundColor(.white)
+                    
                 }
             }
             
@@ -456,6 +461,9 @@ struct BookRow: View {
             return Color.blue
         case .wishlist:
             return Color.purple
+        case .none:
+            return Color.clear
+            
         }
     }
     
@@ -529,6 +537,8 @@ struct BookGridCell: View {
             return Color.blue
         case .wishlist:
             return Color.purple
+        case .none:
+            return Color.clear
         }
     }
 }

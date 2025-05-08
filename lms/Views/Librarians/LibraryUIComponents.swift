@@ -86,7 +86,7 @@ struct BookListView: View {
                         // Wrap LibraryBook into BookWithStatus for compatibility
                         BookRow(book: BookWithStatus(
                             book: book,
-                            status: .borrowed, // Default status; adjust as needed
+                            status: .none, // Changed from .borrowed to .none
                             borrowedDate: Date(),
                             dueDate: nil,
                             returnedDate: nil
