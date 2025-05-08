@@ -10,26 +10,28 @@ import SwiftUI
 struct MainTabView: View {
     let user: User
     @EnvironmentObject var appState: AppState
-    @State private var isTabBarVisible = true
 
     init(user: User) {
         self.user = user
 
-        // Tab bar styling
         let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor.black
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
+        appearance.backgroundColor = .clear
+
         UITabBar.appearance().standardAppearance = appearance
         if #available(iOS 15.0, *) {
             UITabBar.appearance().scrollEdgeAppearance = appearance
         }
-        UITabBar.appearance().tintColor = .white
-        UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.7)
+
+        UITabBar.appearance().tintColor = .systemIndigo
+        UITabBar.appearance().unselectedItemTintColor = UIColor.systemIndigo.withAlphaComponent(0.7)
+
+        UITabBar.appearance().isTranslucent = true
     }
 
     var body: some View {
         TabView {
-            // Summary
             NavigationStack {
                 AdminHomeView(user: user)
                     .navigationTitle("Summary")
@@ -38,9 +40,10 @@ struct MainTabView: View {
             .tabItem {
                 Image(systemName: "chart.pie")
                 Text("Summary")
+                Color(.indigo)
             }
+            
 
-            // Librarians
             NavigationStack {
                 LibrariansTabView()
                     .navigationTitle("Librarians")
@@ -49,9 +52,9 @@ struct MainTabView: View {
             .tabItem {
                 Image(systemName: "person.text.rectangle")
                 Text("Librarians")
+                Color(.indigo)
             }
 
-            // Members
             NavigationStack {
                 MembersTabView()
                     .navigationTitle("Members")
@@ -60,9 +63,9 @@ struct MainTabView: View {
             .tabItem {
                 Image(systemName: "person.3")
                 Text("Members")
+                Color(.indigo)
             }
 
-            // Library
             NavigationStack {
                 LibraryTabView()
                     .navigationTitle("Library")
@@ -71,10 +74,13 @@ struct MainTabView: View {
             .tabItem {
                 Image(systemName: "books.vertical")
                 Text("Library")
+                Color(.indigo)
             }
         }
+        .accentColor(Color(.systemIndigo))
         .onAppear {
             TabBarManager.shared.showTabBar()
         }
     }
 }
+

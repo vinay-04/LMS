@@ -11,13 +11,34 @@ import FirebaseFirestore
 struct MembersTabView: View {
     @StateObject private var vm = MembersListViewModel()
     @State private var searchText = ""
+    @State private var sortOption = SortOption.nameAscending
+    
+    enum SortOption: String, CaseIterable {
+        case nameAscending = "Name (A-Z)"
+        case nameDescending = "Name (Z-A)"
+        case dateNewest = "Newest First"
+        case dateOldest = "Oldest First"
+    }
 
-    // MARK: – Filter logic
-    private var filtered: [Member] {
-        if searchText.isEmpty { return vm.members }
-        return vm.members.filter {
+    // MARK: – Filter and Sort logic
+    private var filteredMembers: [Member] {
+        let filtered = searchText.isEmpty ? vm.members : vm.members.filter {
             $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.email.localizedCaseInsensitiveContains(searchText) ||
             $0.role.localizedCaseInsensitiveContains(searchText)
+        }
+        
+        return filtered.sorted { first, second in
+            switch sortOption {
+            case .nameAscending:
+                return first.name < second.name
+            case .nameDescending:
+                return first.name > second.name
+            case .dateNewest:
+                return first.createdAt > second.createdAt
+            case .dateOldest:
+                return first.createdAt < second.createdAt
+            }
         }
     }
 
@@ -27,41 +48,39 @@ struct MembersTabView: View {
             Color(UIColor.secondarySystemBackground)
                 .ignoresSafeArea()
 
-            // Decorative gradient at top
-            VStack(spacing: 0) {
-                LinearGradient(
-                    colors: [Color.purple.opacity(0.3), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 150)
-                .ignoresSafeArea(edges: .top)
-                Spacer()
-            }
-
             // Main content
-            VStack(spacing: 25) {
-                // Search bar with exactly 30pt under the nav-title
+            VStack(spacing: 0) {
+                // Search bar with sort button
                 HStack {
                     Image(systemName: "magnifyingglass")
-                    TextField("Search", text: $searchText)
-                    Image(systemName: "mic.fill")
+                        .foregroundColor(.secondary)
+                    TextField("Search members", text: $searchText)
+                    
+                    Spacer()
+                    
+                    Menu {
+                        ForEach(SortOption.allCases, id: \.self) { option in
+                            Button(option.rawValue) {
+                                sortOption = option
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                            .font(.subheadline)
+                    }
                 }
-                .padding(12)
+                .padding()
                 .background(Color.white)
                 .cornerRadius(10)
+                .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                 .padding(.horizontal, 16)
-                .padding(.top, 30)
+                .padding(.top, 10)
 
                 // Loading / error / empty / list
                 if vm.isLoading {
-                    VStack {
-                        ProgressView().padding()
-                        Text("Loading members...")
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+                    Spacer()
+                    ProgressView()
+                    Spacer()
                 } else if let error = vm.errorMessage {
                     VStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle")
@@ -78,54 +97,23 @@ struct MembersTabView: View {
                     }
                     .padding()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                } else if filtered.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "person.3.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(.gray)
-                        Text(searchText.isEmpty
-                             ? "No members found"
-                             : "No matching members")
-                            .font(.headline)
-                        Text(searchText.isEmpty
-                             ? "Members will appear here once added"
-                             : "Try a different search term")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
+                } else if filteredMembers.isEmpty {
+                    Spacer()
+                    Text("No members found")
+                        .foregroundColor(.secondary)
+                    Spacer()
                 } else {
                     List {
-                        ForEach(filtered) { member in
+                        ForEach(filteredMembers) { member in
                             NavigationLink(
                                 destination: MemberDetailView(member: member, viewModel: vm)
                             ) {
-                                HStack {
-                                    Circle()
-                                        .foregroundColor(.indigo.opacity(0.3))
-                                        .frame(width: 40, height: 40)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(member.name).bold()
-                                        Text(member.role)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Text("Active")
-                                        .font(.subheadline)
-                                        .foregroundColor(.green)
-                                }
+                                MemberRow(member: member)
                             }
-                            // make each row blend with the screen
                             .listRowBackground(Color(UIColor.secondarySystemBackground))
                         }
                     }
-                    .listStyle(.plain)
-                    // hide default white behind empty areas (iOS 16+)
+                    .listStyle(PlainListStyle())
                     .scrollContentBackground(.hidden)
                 }
             }
@@ -133,5 +121,54 @@ struct MembersTabView: View {
         // fetch & refresh
         .onAppear { vm.fetchMembers() }
         .refreshable { vm.fetchMembers() }
+        .navigationTitle("Members")
+    }
+}
+
+struct MembersTabView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationStack {
+            MembersTabView()
+        }
+    }
+}
+
+struct MemberRow: View {
+    let member: Member
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.purple.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Text(member.name.prefix(1).uppercased())
+                        .font(.headline)
+                        .foregroundColor(.purple)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(member.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(member.email)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Only show role badge if it's not "Member"
+            if member.role != "Member" {
+                Text(member.role)
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(8)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

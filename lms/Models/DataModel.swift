@@ -9,15 +9,18 @@ import SwiftUI
 import Foundation
 import FirebaseFirestore
 
-// MARK: - Member
-
 struct Member: Identifiable, Codable {
-    @DocumentID var id: String?
+    var id: String?
     let name: String
     let phone: String
     let email: String
     let role: String
     var createdAt: Date
+}
+struct MonthData: Identifiable {
+    let id = UUID()
+    let month: String
+    var count: Int
 }
 
 // MARK: - Librarian
@@ -31,6 +34,7 @@ struct Librarian: Identifiable, Codable {
     let designation: String
     var createdAt: Date
     var status: String
+    var profileImageURL: String?
 
     var formattedDate: String {
         let formatter = DateFormatter()

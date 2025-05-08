@@ -1,218 +1,138 @@
-//import SwiftUI
 //
-//struct LibrariansTabView: View {
-//    @StateObject private var vm = LibrarianListViewModel()
-//    @State private var searchText = ""
-//    @State private var showAdd = false
-//    @State private var selectedLibrarian: Librarian?
-//    @State private var showLibrarianDetail = false
+//  LibrariansTabView.swift
+//  lms
 //
-//    // filter on name or designation
-//    private var filtered: [Librarian] {
-//        if searchText.isEmpty { return vm.librarians }
-//        return vm.librarians.filter {
-//            $0.name.localizedCaseInsensitiveContains(searchText) ||
-//            $0.designation.localizedCaseInsensitiveContains(searchText)
-//        }
-//    }
+//  Created by admin19 on 06/05/25.
 //
-//    var body: some View {
-//        NavigationStack {
-//            ZStack(alignment: .top) {
-//                Color(UIColor.secondarySystemBackground)
-//                    .ignoresSafeArea()
-//
-//                LinearGradient(
-//                    colors: [Color.purple.opacity(0.3), .clear],
-//                    startPoint: .top,
-//                    endPoint: .bottom
-//                )
-//                .frame(height: 150)
-//                .ignoresSafeArea(edges: .top)
-//
-//                VStack(spacing: 25) {
-//                    HStack {
-//                        Image(systemName: "magnifyingglass")
-//                        TextField("Search", text: $searchText)
-//                        Image(systemName: "mic.fill")
-//                    }
-//                    .padding(12)
-//                    .background(Color.white)
-//                    .cornerRadius(10)
-//                    .padding(.horizontal, 16)
-//                    .padding(.top, 20)
-//
-//                    List {
-//                        ForEach(filtered) { librarian in
-//                            Button(action: {
-//                                selectedLibrarian = librarian
-//                                showLibrarianDetail = true
-//                            }) {
-//                                HStack {
-//                                    Circle()
-//                                        .foregroundColor(.blue.opacity(0.3))
-//                                        .frame(width: 40, height: 40)
-//                                        .overlay(
-//                                            Text(String(librarian.name.prefix(1)))
-//                                                .foregroundColor(.blue)
-//                                        )
-//
-//                                    VStack(alignment: .leading, spacing: 2) {
-//                                        Text(librarian.name).bold()
-//                                        Text(librarian.designation)
-//                                            .font(.subheadline)
-//                                            .foregroundColor(.secondary)
-//                                    }
-//
-//                                    Spacer()
-//
-//                                    Text(librarian.status)
-//                                        .font(.subheadline)
-//                                        .foregroundColor(librarian.status == "Active" ? .green : .red)
-//                                }
-//                            }
-//                            .listRowBackground(Color(UIColor.secondarySystemBackground))
-//                        }
-//                    }
-//                    .listStyle(.plain)
-//                }
-//                .navigationDestination(isPresented: $showLibrarianDetail) {
-//                    if let librarian = selectedLibrarian {
-//                        LibrarianDetailView(librarian: librarian)
-//                    }
-//                }
-//                
-//                VStack {
-//                    Spacer()
-//                    HStack {
-//                        Spacer()
-//                        Button {
-//                            showAdd = true
-//                        } label: {
-//                            Image(systemName: "plus")
-//                                .font(.title)
-//                                .foregroundColor(.white)
-//                                .frame(width: 60, height: 60)
-//                                .background(Circle().foregroundColor(.blue))
-//                                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-//                        }
-//                        .padding(.trailing, 25)
-//                        .padding(.bottom, 25)
-//                    }
-//                }
-//            }
-//            .navigationTitle("Librarians")
-//            .sheet(isPresented: $showAdd) {
-//                NavigationStack {
-//                    AddLibrarianView()
-//                }
-//            }
-//            .onAppear {
-//                vm.fetchLibrarians()
-//            }
-//        }
-//    }
-//}
-
-
-
-
-
 
 import SwiftUI
+import FirebaseFirestore
 
 struct LibrariansTabView: View {
     @StateObject private var vm = LibrarianListViewModel()
     @State private var searchText = ""
-    @State private var showAdd = false
+    @State private var sortOption = SortOption.nameAscending
     @State private var selectedLibrarian: Librarian?
     @State private var showLibrarianDetail = false
+    
+    enum SortOption: String, CaseIterable {
+        case nameAscending = "Name (A-Z)"
+        case nameDescending = "Name (Z-A)"
+        case dateNewest = "Newest First"
+        case dateOldest = "Oldest First"
+    }
 
-    // filter on name or designation
-    private var filtered: [Librarian] {
-        if searchText.isEmpty { return vm.librarians }
-        return vm.librarians.filter {
+    // MARK: – Filter and Sort logic
+    private var filteredLibrarians: [Librarian] {
+        let filtered = searchText.isEmpty ? vm.librarians : vm.librarians.filter {
             $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.email.localizedCaseInsensitiveContains(searchText) ||
             $0.designation.localizedCaseInsensitiveContains(searchText)
+        }
+        
+        return filtered.sorted { first, second in
+            switch sortOption {
+            case .nameAscending:
+                return first.name < second.name
+            case .nameDescending:
+                return first.name > second.name
+            case .dateNewest:
+                return first.createdAt > second.createdAt
+            case .dateOldest:
+                return first.createdAt < second.createdAt
+            }
         }
     }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
+                // Background color
                 Color(UIColor.secondarySystemBackground)
                     .ignoresSafeArea()
 
-                LinearGradient(
-                    colors: [Color.purple.opacity(0.3), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 150)
-                .ignoresSafeArea(edges: .top)
-
-                VStack(spacing: 25) {
+                // Main content
+                VStack(spacing: 0) {
+                    // Search bar with sort button
                     HStack {
                         Image(systemName: "magnifyingglass")
-                        TextField("Search", text: $searchText)
-                        Image(systemName: "mic.fill")
-                    }
-                    .padding(12)
-                    .background(Color.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-
-                    List {
-                        ForEach(filtered) { librarian in
-                            Button(action: {
-                                selectedLibrarian = librarian
-                                showLibrarianDetail = true
-                            }) {
-                                HStack {
-                                    Circle()
-                                        .foregroundColor(.blue.opacity(0.3))
-                                        .frame(width: 40, height: 40)
-                                        .overlay(
-                                            Text(String(librarian.name.prefix(1)))
-                                                .foregroundColor(.blue)
-                                        )
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(librarian.name).bold()
-                                        // Designation line removed
-                                    }
-
-                                    Spacer()
-
-                                    Text(librarian.status)
-                                        .font(.subheadline)
-                                        .foregroundColor(librarian.status == "Active" ? .green : .red)
+                            .foregroundColor(.secondary)
+                        TextField("Search librarians", text: $searchText)
+                        
+                        Spacer()
+                        
+                        Menu {
+                            ForEach(SortOption.allCases, id: \.self) { option in
+                                Button(option.rawValue) {
+                                    sortOption = option
                                 }
                             }
-                            .listRowBackground(Color(UIColor.secondarySystemBackground))
+                        } label: {
+                            Label("Sort", systemImage: "arrow.up.arrow.down")
+                                .font(.subheadline)
                         }
                     }
-                    .listStyle(.plain)
-                }
-                .navigationDestination(isPresented: $showLibrarianDetail) {
-                    if let librarian = selectedLibrarian {
-                        LibrarianDetailView(librarian: librarian)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(10)
+                    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+
+                    // Loading / error / empty / list
+                    if vm.isLoading {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    } else if let error = vm.errorMessage {
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.largeTitle)
+                                .foregroundColor(.orange)
+                            Text("Error loading librarians")
+                                .font(.headline)
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("Retry") { vm.fetchLibrarians() }
+                                .padding(.top, 8)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if filteredLibrarians.isEmpty {
+                        Spacer()
+                        Text("No librarians found")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    } else {
+                        List {
+                            ForEach(filteredLibrarians) { librarian in
+                                Button {
+                                    selectedLibrarian = librarian
+                                    showLibrarianDetail = true
+                                } label: {
+                                    LibrarianRow(librarian: librarian)
+                                }
+                                .listRowBackground(Color(UIColor.secondarySystemBackground))
+                            }
+                        }
+                        .listStyle(PlainListStyle())
+                        .scrollContentBackground(.hidden)
                     }
                 }
                 
+                // Floating Add Button
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button {
-                            showAdd = true
-                        } label: {
+                        NavigationLink(destination: AddLibrarianView()) {
                             Image(systemName: "plus")
                                 .font(.title)
                                 .foregroundColor(.white)
                                 .frame(width: 60, height: 60)
-                                .background(Circle().foregroundColor(.blue))
+                                .background(Circle().foregroundColor(.indigo))
                                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                         }
                         .padding(.trailing, 25)
@@ -220,15 +140,57 @@ struct LibrariansTabView: View {
                     }
                 }
             }
-            .navigationTitle("Librarians")
-            .sheet(isPresented: $showAdd) {
-                NavigationStack {
-                    AddLibrarianView()
+            // Navigation destination for librarian detail
+            .navigationDestination(isPresented: $showLibrarianDetail) {
+                if let librarian = selectedLibrarian {
+                    LibrarianDetailView(librarian: librarian)
                 }
             }
-            .onAppear {
-                vm.fetchLibrarians()
-            }
+            // fetch & refresh
+            .onAppear { vm.fetchLibrarians() }
+            .refreshable { vm.fetchLibrarians() }
+            .navigationTitle("Librarians")
         }
+    }
+}
+
+struct LibrariansTabView_Previews: PreviewProvider {
+    static var previews: some View {
+        LibrariansTabView()
+    }
+}
+
+struct LibrarianRow: View {
+    let librarian: Librarian
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(Color.indigo.opacity(0.2))
+                .frame(width: 40, height: 40)
+                .overlay(
+                    Text(librarian.name.prefix(1).uppercased())
+                        .font(.headline)
+                        .foregroundColor(.indigo)
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(librarian.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(librarian.email)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            // Replaced designation badge with chevron icon
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+                .font(.system(size: 14, weight: .semibold))
+        }
+        .padding(.vertical, 4)
     }
 }

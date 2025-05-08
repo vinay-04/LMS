@@ -1,358 +1,364 @@
-//import SwiftUI
-//import PhotosUI
 //
-//struct AddLibrarianView: View {
-//    @Environment(\.dismiss) private var dismiss
-//    @StateObject private var vm = AddLibrarianViewModel()
+//  AddLibrarianView.swift
+//  lms
 //
-//    var body: some View {
-//        VStack(spacing: 0) {
-//            Button {
-//                vm.showPhotoPicker = true
-//            } label: {
-//                if let img = vm.image {
-//                    Image(uiImage: img)
-//                        .resizable()
-//                        .scaledToFill()
-//                } else {
-//                    Image(systemName: "camera")
-//                        .font(.largeTitle)
-//                        .foregroundColor(.gray)
-//                }
-//            }
-//            .frame(width: 120, height: 120)
-//            .background(Color.white)
-//            .clipShape(Circle())
-//            .shadow(color: Color.gray.opacity(0.5), radius: 5)
-//            .padding(.top, 30)
+//  Created by admin19 on 06/05/25.
 //
-//            Spacer().frame(height: 60)
-//
-//            Text("ADD LIBRARIAN DETAILS")
-//                .font(.subheadline)
-//                .fontWeight(.medium)
-//                .frame(maxWidth: .infinity, alignment: .leading)
-//                .padding(.horizontal, 16)
-//                .foregroundColor(.gray)
-//
-//            VStack(spacing: 0) {
-//                RowField(icon: "person", title: "Name", text: $vm.name)
-//                Divider()
-//                RowField(icon: "briefcase", title: "Designation", text: $vm.designation)
-//                Divider()
-//                RowField(icon: "dollarsign.circle", title: "Salary", text: $vm.salary)
-//                Divider()
-//                RowField(icon: "phone", title: "Contact", text: $vm.phone)
-//                Divider()
-//                RowField(icon: "at", title: "Email", text: $vm.email)
-//                Divider()
-//                RowField(icon: "key", title: "Password", text: $vm.password, isSecure: true)
-//            }
-//            .background(Color.white)
-//            .cornerRadius(12)
-//            .padding(.horizontal, 16)
-//            .padding(.top, 8)
-//
-//            Spacer()
-//        }
-//        .background(Color(UIColor.secondarySystemBackground).ignoresSafeArea())
-//        .navigationTitle("Add Librarian")
-//        .navigationBarTitleDisplayMode(.inline)
-//        .toolbar {
-//            ToolbarItem(placement: .navigationBarTrailing) {
-//                Button("Save") {
-//                    vm.save { dismiss() }
-//                }
-//                .disabled(!vm.canSave)
-//            }
-//            // Back button is now handled by the parent view
-//        }
-//        .photosPicker(isPresented: $vm.showPhotoPicker, selection: $vm.photoItem)
-//        .onChange(of: vm.photoItem) { newItem in
-//            guard let item = newItem else { return }
-//            Task {
-//                if let data = try? await item.loadTransferable(type: Data.self),
-//                   let ui = UIImage(data: data) {
-//                    vm.image = ui
-//                }
-//            }
-//        }
-//    }
-//}
-//
-//fileprivate struct RowField: View {
-//    let icon: String, title: String
-//    @Binding var text: String
-//    var isSecure = false
-//
-//    var body: some View {
-//        HStack {
-//            Image(systemName: icon)
-//                .foregroundColor(.gray)
-//            Text(title)
-//            Spacer()
-//            if isSecure {
-//                SecureField("Value", text: $text)
-//                    .multilineTextAlignment(.trailing)
-//            } else {
-//                TextField("Value", text: $text)
-//                    .multilineTextAlignment(.trailing)
-//            }
-//        }
-//        .padding(.vertical, 12)
-//        .padding(.horizontal, 16)
-//    }
-//}
-//
-//#Preview {
-//    NavigationStack {
-//        AddLibrarianView()
-//    }
-//}
-//
-//
-
-
 
 import SwiftUI
 import PhotosUI
+
+// MARK: – Custom Colors
+extension Color {
+    static let primaryBlue    = Color(red: 0.0,  green: 0.48, blue: 1.0)
+    static let darkBackground = Color(red: 0.95, green: 0.95, blue: 0.97)
+    static let cardBackground = Color.white
+}
+
+// MARK: – AddLibrarianView
 
 struct AddLibrarianView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = AddLibrarianViewModel()
 
     var body: some View {
-        VStack(spacing: 0) {
-            Button {
-                vm.showPhotoPicker = true
-            } label: {
-                if let img = vm.image {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Image(systemName: "camera")
-                        .font(.largeTitle)
-                        .foregroundColor(.gray)
-                }
-            }
-            .frame(width: 120, height: 120)
-            .background(Color.white)
-            .clipShape(Circle())
-            .shadow(color: Color.gray.opacity(0.5), radius: 5)
-            .padding(.top, 30)
-
-            Spacer().frame(height: 60)
-
-            Text("ADD LIBRARIAN DETAILS")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .foregroundColor(.gray)
+        ZStack {
+            Color.darkBackground
+                .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 0) {
-                    // Name Field
-                    VStack(alignment: .leading) {
+                VStack(spacing: 20) {
+
+                    profileImageSection
+                    personalInfoSection
+                    professionalInfoSection
+                    accountDetailsSection
+
+                    Button(action: { vm.save() }) {
                         HStack {
-                            Image(systemName: "person")
-                                .foregroundColor(.gray)
-                            Text("Name")
-                            Spacer()
-                            TextField("Enter Name", text: $vm.name)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit { vm.validateName() }
+                            Image(systemName: "person.badge.plus")
+                            Text("Save Librarian")
                         }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.nameError.isEmpty {
-                            Text(vm.nameError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(.systemIndigo))
+                        .cornerRadius(12)
+                        .shadow(color: Color(.systemIndigo).opacity(0.3),
+                                radius: 5, x: 0, y: 3)
                     }
-                    Divider()
-                    
-                    // Designation Field
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Image(systemName: "briefcase")
-                                .foregroundColor(.gray)
-                            Text("Designation")
-                            Spacer()
-                            TextField("Enter Designation", text: $vm.designation)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit { vm.validateDesignation() }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.designationError.isEmpty {
-                            Text(vm.designationError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                    Divider()
-                    
-                    // Salary Field
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Image(systemName: "dollarsign.circle")
-                                .foregroundColor(.gray)
-                            Text("Salary")
-                            Spacer()
-                            TextField("Enter Salary", text: $vm.salary)
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.numberPad)
-                                .onSubmit { vm.validateSalary() }
-                                .onChange(of: vm.salary) { _ in vm.validateSalary() }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.salaryError.isEmpty {
-                            Text(vm.salaryError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                    Divider()
-                    
-                    // Phone Field
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Image(systemName: "phone")
-                                .foregroundColor(.gray)
-                            Text("Contact")
-                            Spacer()
-                            TextField("Enter Phone", text: $vm.phone)
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.phonePad)
-                                .onSubmit { vm.validatePhone() }
-                                .onChange(of: vm.phone) { _ in vm.validatePhone() }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.phoneError.isEmpty {
-                            Text(vm.phoneError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                    Divider()
-                    
-                    // Email Field
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Image(systemName: "at")
-                                .foregroundColor(.gray)
-                            Text("Email")
-                            Spacer()
-                            TextField("Enter Email", text: $vm.email)
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.emailAddress)
-                                .autocapitalization(.none)
-                                .autocorrectionDisabled(true)
-                                .onSubmit { vm.validateEmail() }
-                                .onChange(of: vm.email) { _ in vm.validateEmail() }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.emailError.isEmpty {
-                            Text(vm.emailError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
-                    }
-                    Divider()
-                    
-                    // Password Field
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Image(systemName: "key")
-                                .foregroundColor(.gray)
-                            Text("Password")
-                            Spacer()
-                            SecureField("Enter Password", text: $vm.password)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit { vm.validatePassword() }
-                                .onChange(of: vm.password) { _ in vm.validatePassword() }
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        
-                        if !vm.passwordError.isEmpty {
-                            Text(vm.passwordError)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 8)
-                        }
-                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
+                    .disabled(!vm.canSave)
                 }
-                .background(Color.white)
-                .cornerRadius(12)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 16)
             }
 
-            Button {
-                vm.save { dismiss() }
-            } label: {
-                Text("Save Librarian")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(vm.canSave ? Color.blue : Color.gray)
-                    .cornerRadius(10)
-            }
-            .disabled(!vm.canSave)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
-        }
-        .background(Color(UIColor.secondarySystemBackground).ignoresSafeArea())
-        .navigationTitle("Add Librarian")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Save") {
-                    vm.save { dismiss() }
+            // Loading overlay
+            if vm.isLoading {
+                ZStack {
+                    Color.black.opacity(0.4).ignoresSafeArea()
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .progressViewStyle(
+                                CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(2)
+                        Text("Saving librarian…")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                    .padding(30)
+                    .background(Color.gray.opacity(0.7))
+                    .cornerRadius(20)
                 }
-                .disabled(!vm.canSave)
             }
         }
-        .photosPicker(isPresented: $vm.showPhotoPicker, selection: $vm.photoItem)
-        .onChange(of: vm.photoItem) { newItem in
-            guard let item = newItem else { return }
+        // Only the system back button remains, tinted indigo:
+        .navigationBarTitle("Add New Librarian", displayMode: .inline)
+        .tint(.indigo)
+
+        // Photo picker integration
+        .photosPicker(isPresented: $vm.showPhotoPicker,
+                      selection: $vm.photoItem)
+        .onChange(of: vm.photoItem) { item in
+            guard let item = item else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
-                   let ui = UIImage(data: data) {
+                   let ui   = UIImage(data: data) {
                     vm.image = ui
                 }
             }
         }
+
+        // Success / error alert
+        .alert(vm.isSuccess ? "Success" : "Error",
+               isPresented: $vm.showAlert)
+        {
+            Button("OK") {
+                if vm.isSuccess {
+                    dismiss()
+                }
+            }
+        } message: {
+            Text(vm.alertMessage)
+        }
+    }
+
+    // MARK: — Subviews
+
+    private var profileImageSection: some View {
+        VStack(spacing: 15) {
+            HStack {
+                Image(systemName: "person.crop.circle.fill")
+                    .foregroundColor(.primaryBlue)
+                    .font(.system(size: 20, weight: .semibold))
+                Text("Profile Picture")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            Button { vm.showPhotoPicker = true } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 120, height: 120)
+                        .shadow(color: Color.black.opacity(0.1),
+                                radius: 5, x: 0, y: 2)
+                    if let img = vm.image {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 118, height: 118)
+                            .clipShape(Circle())
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 30))
+                                .foregroundColor(.gray)
+                            Text("Upload Photo")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+        }
+        .padding()
+        .background(Color.cardBackground)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05),
+                radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
+    }
+
+    private var personalInfoSection: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Image(systemName: "person.fill")
+                    .foregroundColor(.green)
+                    .font(.system(size: 20, weight: .semibold))
+                Text("Personal Information")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            EnhancedTextField(
+                title:             "Full Name",
+                placeholder:       "Enter full name",
+                text:              $vm.name,
+                isValid:           $vm.isNameValid,
+                validationMessage: vm.nameError,
+                keyboardType:      .default,
+                icon:              "person.fill"
+            )
+
+            EnhancedTextField(
+                title:             "Contact Number",
+                placeholder:       "Enter phone number",
+                text:              $vm.phone,
+                isValid:           $vm.isContactValid,
+                validationMessage: vm.phoneError,
+                keyboardType:      .phonePad,
+                icon:              "phone.fill"
+            )
+        }
+        .padding()
+        .background(Color.cardBackground)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05),
+                radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
+    }
+
+    private var professionalInfoSection: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Image(systemName: "briefcase.fill")
+                    .foregroundColor(.cyan)
+                    .font(.system(size: 20, weight: .semibold))
+                Text("Professional Information")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            EnhancedTextField(
+                title:             "Designation",
+                placeholder:       "Enter designation",
+                text:              $vm.designation,
+                isValid:           .constant(true),
+                validationMessage: "",
+                keyboardType:      .default,
+                icon:              "tag.fill"
+            )
+
+            EnhancedTextField(
+                title:             "Salary",
+                placeholder:       "Enter annual salary",
+                text:              $vm.salary,
+                isValid:           .constant(true),
+                validationMessage: "",
+                keyboardType:      .decimalPad,
+                icon:              "dollarsign.circle.fill"
+            )
+        }
+        .padding()
+        .background(Color.cardBackground)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05),
+                radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
+    }
+
+    private var accountDetailsSection: some View {
+        VStack(spacing: 20) {
+            HStack {
+                Image(systemName: "lock.fill")
+                    .foregroundColor(.pink.opacity(0.7))
+                    .font(.system(size: 20, weight: .semibold))
+                Text("Account Details")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+
+            EnhancedTextField(
+                title:             "Email Address",
+                placeholder:       "Enter email address",
+                text:              $vm.email,
+                isValid:           $vm.isEmailValid,
+                validationMessage: vm.emailError,
+                keyboardType:      .emailAddress,
+                icon:              "envelope.fill"
+            )
+
+            EnhancedSecureField(
+                title:             "Password",
+                placeholder:       "Create a strong password",
+                text:              $vm.password,
+                isValid:           $vm.isPasswordValid,
+                validationMessage: vm.passwordError,
+                icon:              "lock.shield.fill"
+            )
+        }
+        .padding()
+        .background(Color.cardBackground)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05),
+                radius: 5, x: 0, y: 2)
+        .padding(.horizontal)
     }
 }
 
-#Preview {
-    NavigationStack {
-        AddLibrarianView()
+// MARK: — Helper Fields
+
+struct EnhancedTextField: View {
+    var title: String
+    var placeholder: String
+    @Binding var text: String
+    @Binding var isValid: Bool
+    var validationMessage: String
+    var keyboardType: UIKeyboardType
+    var icon: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(isValid ? .gray : .red)
+                    .frame(width: 25)
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboardType)
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isValid ? Color.gray.opacity(0.3) : Color.red,
+                            lineWidth: 1)
+                    .background(Color.white)
+                    .cornerRadius(10)
+            )
+            if !isValid {
+                Text(validationMessage)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .padding(.leading, 5)
+            }
+        }
     }
 }
+
+struct EnhancedSecureField: View {
+    var title: String
+    var placeholder: String
+    @Binding var text: String
+    @Binding var isValid: Bool
+    var validationMessage: String
+    var icon: String
+    @State private var isVisible = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(isValid ? .gray : .red)
+                    .frame(width: 25)
+                if isVisible {
+                    TextField(placeholder, text: $text)
+                } else {
+                    SecureField(placeholder, text: $text)
+                }
+                Button { isVisible.toggle() } label: {
+                    Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isValid ? Color.gray.opacity(0.3) : Color.red,
+                            lineWidth: 1)
+                    .background(Color.white)
+                    .cornerRadius(10)
+            )
+            if !isValid {
+                Text(validationMessage)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .padding(.leading, 5)
+            }
+        }
+    }
+}
+
+

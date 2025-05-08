@@ -1,3 +1,10 @@
+//
+//  AddLibrarianViewModel.swift
+//  lms
+//
+//  Created by admin19 on 06/05/25.
+//
+
 import Appwrite
 import JSONCodable
 import Foundation
@@ -8,184 +15,185 @@ import FirebaseStorage
 
 @MainActor
 class AddLibrarianViewModel: ObservableObject {
-    // MARK: – Published form fields
-    @Published var name = ""
+    // MARK: – Form Data
+    @Published var name        = ""
     @Published var designation = ""
-    @Published var salary = ""
-    @Published var phone = ""
-    @Published var email = ""
-    @Published var password = ""
-    @Published var status = "Active"
-    @Published var image: UIImage?
+    @Published var salary      = ""
+    @Published var phone       = ""
+    @Published var email       = ""
+    @Published var password    = ""
+    @Published var status      = "Active"
+
+    // MARK: – Photo Picker
+    @Published var image           : UIImage?
     @Published var showPhotoPicker = false
-    @Published var photoItem: PhotosPickerItem?
-    
-    // MARK: - Validation States
-    @Published var nameError = ""
-    @Published var designationError = ""
-    @Published var salaryError = ""
-    @Published var phoneError = ""
-    @Published var emailError = ""
-    @Published var passwordError = ""
-    
-    // MARK: – Clients
-    private let account: Account
-    private let db = Firestore.firestore()
-    private let storage = Storage.storage()
-    
+    @Published var photoItem       : PhotosPickerItem?
+
+    // MARK: – Validation State
+    @Published var isNameValid     = true
+    @Published var isContactValid  = true
+    @Published var isEmailValid    = true
+    @Published var isPasswordValid = true
+    @Published var nameError       = ""
+    @Published var phoneError      = ""
+    @Published var emailError      = ""
+    @Published var passwordError   = ""
+
+    // MARK: – Loading & Alert
+    @Published var isLoading    = false
+    @Published var showAlert    = false
+    @Published var isSuccess    = false
+    @Published var alertMessage = ""
+
+    // MARK: – Backends
+    private let account   : Account
+    private let databases : Databases
+    private let db        = Firestore.firestore()
+    private let storage   = Storage.storage()
+
     init() {
         let client = Client()
             .setEndpoint(AppwriteConfig.endpoint)
             .setProject(AppwriteConfig.projectId)
             .setSelfSigned(true)
-        self.account = Account(client)
+
+        account   = Account(client)
+        databases = Databases(client)
     }
-    
-    // MARK: - Validation Methods
-    
+
+    // MARK: – Validation
+
     func validateName() {
         if name.isEmpty {
-            nameError = "Name cannot be empty"
+            nameError   = "Name cannot be empty"
+            isNameValid = false
         } else {
-            nameError = ""
+            nameError   = ""
+            isNameValid = true
         }
     }
-    
-    func validateDesignation() {
-        if designation.isEmpty {
-            designationError = "Designation cannot be empty"
-        } else {
-            designationError = ""
-        }
-    }
-    
-    func validateSalary() {
-        // Check if salary is empty
-        if salary.isEmpty {
-            salaryError = "Salary cannot be empty"
-            return
-        }
-        
-        // Check if salary contains only digits
-        if !CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: salary)) {
-            salaryError = "Salary must contain integers only"
-            return
-        }
-        
-        salaryError = ""
-    }
-    
+
     func validatePhone() {
-        // Check if phone is exactly 10 digits
-        let phoneRegex = "^[0-9]{10}$"
-        let phonePredicate = NSPredicate(format: "SELF MATCHES %@", phoneRegex)
-        
-        if !phonePredicate.evaluate(with: phone) {
-            phoneError = "Phone number must be exactly 10 digits"
+        let pattern = "^[0-9]{10}$"
+        let pred    = NSPredicate(format: "SELF MATCHES %@", pattern)
+        if !pred.evaluate(with: phone) {
+            phoneError      = "Phone must be exactly 10 digits"
+            isContactValid  = false
         } else {
-            phoneError = ""
+            phoneError      = ""
+            isContactValid  = true
         }
     }
-    
+
     func validateEmail() {
-        // Check if email is not empty
         if email.isEmpty {
-            emailError = "Email cannot be empty"
+            emailError   = "Email cannot be empty"
+            isEmailValid = false
             return
         }
-        
-        // Check if email ends with @gmail.com
         if !email.lowercased().hasSuffix("@gmail.com") {
-            emailError = "Email must be a Gmail address (@gmail.com)"
+            emailError   = "Must end in @gmail.com"
+            isEmailValid = false
             return
         }
-        
-        // Additional check for a valid email format
-        let emailRegex = "[A-Z0-9a-z._%+-]+@gmail\\.com"
-        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        
-        if !emailPredicate.evaluate(with: email) {
-            emailError = "Please enter a valid Gmail address"
+        let regex = "[A-Z0-9a-z._%+-]+@gmail\\.com"
+        let pred  = NSPredicate(format: "SELF MATCHES %@", regex)
+        if !pred.evaluate(with: email) {
+            emailError   = "Enter a valid Gmail address"
+            isEmailValid = false
         } else {
-            emailError = ""
+            emailError   = ""
+            isEmailValid = true
         }
     }
-    
+
     func validatePassword() {
-        if password.isEmpty {
-            passwordError = "Password cannot be empty"
-            return
-        }
-        
         if password.count < 6 {
-            passwordError = "Password must be at least 6 characters"
+            passwordError    = "At least 6 characters"
+            isPasswordValid  = false
         } else {
-            passwordError = ""
+            passwordError    = ""
+            isPasswordValid  = true
         }
     }
-    
+
     var canSave: Bool {
-        // Check if all fields are filled
-        let fieldsNotEmpty = !name.isEmpty &&
-                           !designation.isEmpty &&
-                           !salary.isEmpty &&
-                           !phone.isEmpty &&
-                           !email.isEmpty &&
-                           !password.isEmpty
-        
-        // Check if there are no validation errors
-        let noErrors = nameError.isEmpty &&
-                      designationError.isEmpty &&
-                      salaryError.isEmpty &&
-                      phoneError.isEmpty &&
-                      emailError.isEmpty &&
-                      passwordError.isEmpty
-        
-        return fieldsNotEmpty && noErrors
+        !name.isEmpty
+        && !phone.isEmpty
+        && !email.isEmpty
+        && !password.isEmpty
+        && isNameValid
+        && isContactValid
+        && isEmailValid
+        && isPasswordValid
     }
-    
-    func save(onSuccess: @escaping () -> Void) {
-        // Run all validations one more time
+
+    // MARK: – Save Flow
+
+    func save() {
+        // run all validations
         validateName()
-        validateDesignation()
-        validateSalary()
         validatePhone()
         validateEmail()
         validatePassword()
-        
-        guard canSave else { return }
-        
+        guard canSave else {
+            alertMessage = "Please fix the errors first."
+            isSuccess    = false
+            showAlert    = true
+            return
+        }
+
+        isLoading = true
+
         Task {
             do {
-                let createdUser = try await account.create(
-                    userId: ID.unique(),
-                    email: email,
+                // 1) Create Appwrite account
+                let created = try await account.create(
+                    userId:   ID.unique(),
+                    email:    email,
                     password: password,
-                    name: name
+                    name:     name
                 )
-                
-                let uid = createdUser.id
-                
-                // Convert salary to integer
-                let salaryValue = Int(salary) ?? 0
-                
+                let uid = created.id
+
+                // 2) Mirror into your Appwrite Database users collection
+                try await databases.createDocument(
+                    databaseId:     AppwriteConfig.databaseId,
+                    collectionId:   AppwriteConfig.usersCollectionId,
+                    documentId:     uid,
+                    data: [
+                        "user_id":     uid,
+                        "full_name":   name,
+                        "email":       email,
+                        "role":        UserRole.librarian.rawValue,
+                        "is_verified": true,
+                        "mfa_enabled": false,
+                        "created_at":  Date().ISO8601Format()
+                    ]
+                )
+
+                // 3) Build your Firestore model
+                let salaryValue = Double(salary) ?? 0
                 let lib = Librarian(
-                    id: uid,
-                    name: name,
-                    email: email,
-                    phone: phone,
-                    salary: Double(salaryValue),
-                    designation: designation,
-                    createdAt: Date(),
-                    status: status
+                    id:               uid,
+                    name:             name,
+                    email:            email,
+                    phone:            phone,
+                    salary:           salaryValue,
+                    designation:      designation,
+                    createdAt:        Date(),
+                    status:           status,
+                    profileImageURL:  nil
                 )
-                
+
+                // 4) Write to Firestore
                 try db.collection("librarians")
                     .document(uid)
                     .setData(from: lib)
-                
-                if let img = image,
-                   let data = img.jpegData(compressionQuality: 0.8)
+
+                // 5) Optional: upload profile photo
+                if let uiImage = image,
+                   let data    = uiImage.jpegData(compressionQuality: 0.8)
                 {
                     let ref = storage.reference()
                         .child("librarian_images/\(uid).jpg")
@@ -193,14 +201,24 @@ class AddLibrarianViewModel: ObservableObject {
                     let url = try await ref.downloadURL()
                     try await db.collection("librarians")
                         .document(uid)
-                        .updateData(["photoURL": url.absoluteString])
+                        .updateData(["profileImageURL": url.absoluteString])
                 }
-                
+
+                // 6) Notify success on main thread
                 DispatchQueue.main.async {
-                    onSuccess()
+                    self.isLoading    = false
+                    self.alertMessage = "Librarian added successfully!"
+                    self.isSuccess    = true
+                    self.showAlert    = true
                 }
+
             } catch {
-                print("Failed to save librarian:", error.localizedDescription)
+                DispatchQueue.main.async {
+                    self.isLoading    = false
+                    self.alertMessage = "Save failed: \(error.localizedDescription)"
+                    self.isSuccess    = false
+                    self.showAlert    = true
+                }
             }
         }
     }

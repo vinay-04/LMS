@@ -1,10 +1,3 @@
-//
-//  BarcodeScannerView.swift
-//  lms
-//
-//  Created by palak seth on 04/05/25.
-//
-
 import SwiftUI
 import CodeScanner
 

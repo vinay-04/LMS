@@ -14,7 +14,6 @@ struct EnhancedBooksRowView: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Book cover
             if let coverImage = book.coverImage {
                 Image(uiImage: coverImage)
                     .resizable()
@@ -32,7 +31,6 @@ struct EnhancedBooksRowView: View {
                     )
             }
             
-            // Book details
             VStack(alignment: .leading, spacing: 2) {
                 Text(book.title)
                     .font(.headline)
@@ -48,8 +46,6 @@ struct EnhancedBooksRowView: View {
                     .font(.footnote)
                     .foregroundColor(.secondary)
                 
-                // Display available copies based on the difference between available and reserved
-                // This matches what appears in your app's UI
                 let availableCopies = book.unreservedCount
                 Text("Available: \(availableCopies) of \(book.totalCopies)")
                     .font(.footnote)
@@ -58,7 +54,6 @@ struct EnhancedBooksRowView: View {
             
             Spacer()
             
-            // Availability indicator - matching your UI in the screenshot
             let availableCopies = book.unreservedCount
             Text(availableCopies > 0 ? "Available" : "Unavailable")
                 .font(.subheadline)
