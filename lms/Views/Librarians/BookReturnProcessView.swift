@@ -21,6 +21,11 @@ struct BookReturnProcessView: View {
     @State private var isBookIssued = false
     @State private var showConfirmation = false
     
+    // New states for fine handling
+    @State private var fine: Fine?
+    @State private var showFineAlert = false
+    @State private var processingFinePayment = false
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -150,17 +155,55 @@ struct BookReturnProcessView: View {
                                         Text("Member ID: \(id!)")
                                             .fontWeight(.medium)
                                         
-                                        Button(action: {
-                                            showConfirmation = true
-                                        }) {
-                                            Text("Confirm Return")
-                                                .frame(maxWidth: .infinity)
-                                                .padding()
-                                                .background(Color.green)
-                                                .foregroundColor(.white)
-                                                .cornerRadius(8)
+                                        // Display fine info if present
+                                        if let fine = fine, fine.fineAmount > 0 {
+                                            VStack(alignment: .leading, spacing: 5) {
+                                                Text("Fine Information:")
+                                                    .font(.headline)
+                                                
+                                                HStack {
+                                                    Text("Days overdue:")
+                                                    Spacer()
+                                                    Text("\(fine.daysOverdue)")
+                                                }
+                                                
+                                                HStack {
+                                                    Text("Fine amount:")
+                                                    Spacer()
+                                                    Text("₹\(String(format: "%.2f", fine.fineAmount))")
+                                                        .foregroundColor(.red)
+                                                        .fontWeight(.bold)
+                                                }
+                                                
+                                                Button(action: {
+                                                    processFinePayment()
+                                                }) {
+                                                    Text("Due Paid")
+                                                        .frame(maxWidth: .infinity)
+                                                        .padding()
+                                                        .background(Color.purple)
+                                                        .foregroundColor(.white)
+                                                        .cornerRadius(8)
+                                                }
+                                                .padding(.top, 5)
+                                            }
+                                            .padding()
+                                            .background(Color.secondary.opacity(0.1))
+                                            .cornerRadius(8)
+                                            .padding(.vertical)
+                                        } else {
+                                            Button(action: {
+                                                showConfirmation = true
+                                            }) {
+                                                Text("Confirm Return")
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding()
+                                                    .background(Color.green)
+                                                    .foregroundColor(.white)
+                                                    .cornerRadius(8)
+                                            }
+                                            .padding(.horizontal)
                                         }
-                                        .padding(.horizontal)
                                     }
                                 } else {
                                     VStack(spacing: 10) {
@@ -215,6 +258,22 @@ struct BookReturnProcessView: View {
                     },
                     secondaryButton: .cancel(Text("Cancel"))
                 )
+            }
+            .alert("Fine Due", isPresented: $showFineAlert) {
+                Button("Pay Fine (₹\(String(format: "%.2f", fine?.fineAmount ?? 0.0)))") {
+                    processFinePayment()
+                }
+                Button("Cancel", role: .cancel) {
+                    // Reset states
+                    fine = nil
+                    id = nil
+                }
+            } message: {
+                if let fine = fine {
+                    Text("This book is \(fine.daysOverdue) days overdue. A fine of ₹\(String(format: "%.2f", fine.fineAmount)) is due. Would you like to mark it as paid?")
+                } else {
+                    Text("Unable to calculate fine amount.")
+                }
             }
         }
     }
@@ -329,10 +388,9 @@ struct BookReturnProcessView: View {
                 print("Checking path: \(issuedRef.path)")
                 
                 issuedRef.getDocuments { (issuedSnapshot, error) in
-                    isLoading = false
-                    
                     if let error = error {
-                        errorMessage = "Error checking issued books: \(error.localizedDescription)"
+                        self.isLoading = false
+                        self.errorMessage = "Error checking issued books: \(error.localizedDescription)"
                         print("Error fetching issued books: \(error.localizedDescription)")
                         return
                     }
@@ -357,146 +415,228 @@ struct BookReturnProcessView: View {
                     // Update the state
                     self.isBookIssued = isBookIssued
                     
-                    // If book is not issued, set an error message
-                    if !isBookIssued {
-                        errorMessage = "This book is not currently issued to this member"
+                    // If book is issued, check for fines before proceeding
+                    if isBookIssued {
+                        // Check for fines
+                        self.viewModel.getFineForBook(memberID: memberId, bookID: bookID) { fine in
+                            self.isLoading = false
+                            
+                            if let fine = fine, fine.fineAmount > 0 {
+                                // There's a fine to be paid
+                                self.fine = fine
+                                // Update the UI to show fine information
+                                // The fine info will be displayed in the UI
+                            } else {
+                                // No fine or zero amount, leave fine as nil
+                                self.fine = nil
+                            }
+                        }
+                    } else {
+                        // If book is not issued, set an error message
+                        self.isLoading = false
+                        self.errorMessage = "This book is not currently issued to this member"
                     }
                 }
             }
     }
     
-    // Process the book return in Firestore
-    private func processBookReturn() {
-        guard let book = bookDetails, let scannedMemberId = id else { return }
+    // Process fine payment
+    private func processFinePayment() {
+        guard let fine = fine, let memberId = id, let book = bookDetails else {
+            return
+        }
         
+        processingFinePayment = true
         isLoading = true
         
-        // First, find the actual member document ID
-        viewModel.db.collection("members")
-            .whereField("id", isEqualTo: scannedMemberId)
-            .getDocuments { (memberSnapshot, memberError) in
-                if let error = memberError {
-                    isLoading = false
-                    errorMessage = "Error finding member: \(error.localizedDescription)"
-                    return
-                }
+        // Mark fine as paid in Firestore
+        viewModel.markFineAsPaid(memberID: memberId, bookID: book.id, fine: fine) { success in
+            if success {
+                // Record the fine payment activity
+                viewModel.recordFinePayment(
+                    bookID: book.id,
+                    bookTitle: book.title,
+                    memberID: memberId,
+                    memberName: "Member ID: \(memberId)", // You might want to fetch the actual name
+                    amount: fine.fineAmount
+                )
                 
-                let actualMemberId: String
+                // Update local state
+                self.fine = nil
+                self.processingFinePayment = false
                 
-                if let memberDoc = memberSnapshot?.documents.first {
-                    // Use the actual document ID from Firestore
-                    actualMemberId = memberDoc.documentID
-                    print("Found member document ID: \(actualMemberId)")
-                } else {
-                    // Try direct lookup as fallback
-                    self.viewModel.db.collection("members").document(scannedMemberId).getDocument { (directSnapshot, directError) in
-                        if directSnapshot?.exists != true {
-                            self.isLoading = false
-                            self.errorMessage = "Member not found"
-                            print("Member not found by any method")
-                            return
+                // Proceed with confirmation dialog
+                self.showConfirmation = true
+            } else {
+                // Handle error
+                                self.errorMessage = "Failed to process fine payment"
+                                self.processingFinePayment = false
+                                self.isLoading = false
+                            }
                         }
-                        
-                        // Continue with direct ID
-                        print("Using direct member ID: \(scannedMemberId)")
-                        self.continueBookReturn(scannedMemberId: scannedMemberId, actualMemberId: scannedMemberId, book: book)
                     }
-                    return
+                    
+                    // Process the book return in Firestore
+                    private func processBookReturn() {
+                        guard let book = bookDetails, let scannedMemberId = id else { return }
+                        
+                        isLoading = true
+                        
+                        // First, find the actual member document ID
+                        viewModel.db.collection("members")
+                            .whereField("id", isEqualTo: scannedMemberId)
+                            .getDocuments { (memberSnapshot, memberError) in
+                                if let error = memberError {
+                                    isLoading = false
+                                    errorMessage = "Error finding member: \(error.localizedDescription)"
+                                    return
+                                }
+                                
+                                let actualMemberId: String
+                                
+                                if let memberDoc = memberSnapshot?.documents.first {
+                                    // Use the actual document ID from Firestore
+                                    actualMemberId = memberDoc.documentID
+                                    print("Found member document ID: \(actualMemberId)")
+                                } else {
+                                    // Try direct lookup as fallback
+                                    self.viewModel.db.collection("members").document(scannedMemberId).getDocument { (directSnapshot, directError) in
+                                        if directSnapshot?.exists != true {
+                                            self.isLoading = false
+                                            self.errorMessage = "Member not found"
+                                            print("Member not found by any method")
+                                            return
+                                        }
+                                        
+                                        // Continue with direct ID
+                                        print("Using direct member ID: \(scannedMemberId)")
+                                        self.continueBookReturn(scannedMemberId: scannedMemberId, actualMemberId: scannedMemberId, book: book)
+                                    }
+                                    return
+                                }
+                                
+                                // Continue with found member ID
+                                self.continueBookReturn(scannedMemberId: scannedMemberId, actualMemberId: actualMemberId, book: book)
+                            }
+                    }
+                    
+                    // Helper method to continue with book return after member is found
+                    private func continueBookReturn(scannedMemberId: String, actualMemberId: String, book: BookDetails) {
+                        let bookID = book.id
+                        
+                        // Get the issued document path
+                        let issuedBookRef = viewModel.db.collection("members")
+                            .document(actualMemberId)
+                            .collection("userbooks")
+                            .document("collection")
+                            .collection("issued")
+                            .document(bookID)
+                        
+                        // Get the issued timestamp from the issued document
+                        issuedBookRef.getDocument { issuedDoc, error in
+                            if let error = error {
+                                self.isLoading = false
+                                self.errorMessage = "Error getting issued data: \(error.localizedDescription)"
+                                print("Error getting issued doc: \(error.localizedDescription)")
+                                return
+                            }
+                            
+                            guard let issuedData = issuedDoc?.data() else {
+                                self.isLoading = false
+                                self.errorMessage = "Book issue data not found"
+                                print("No data in issued document")
+                                return
+                            }
+                            
+                            print("Found issued data: \(issuedData)")
+                            
+                            // Create a batch to ensure all operations succeed or fail together
+                            let batch = self.viewModel.db.batch()
+                            
+                            let requestedTimestamp = issuedData["requestedTimestamp"] as? Timestamp ?? Timestamp(date: Date())
+                            let issuedTimestamp = issuedData["issuedTimestamp"] as? Timestamp ?? Timestamp(date: Date())
+                            let currentDate = Date()
+                            
+                            // Get fine information if it exists
+                            let fineAmount = self.fine?.fineAmount
+                            let finePaid = self.fine != nil && fineAmount != nil && fineAmount! > 0 ? true : false
+                            
+                            // Add history record with fine information
+                            let historyRef = self.viewModel.db.collection("members")
+                                .document(actualMemberId)
+                                .collection("userbooks")
+                                .document("collection")
+                                .collection("history")
+                                .document(bookID)
+                            
+                            let historyData = BookHistory.createReturnedWithFine(
+                                bookID: bookID,
+                                userID: scannedMemberId,
+                                requestTimestamp: requestedTimestamp.dateValue(),
+                                issuedTimestamp: issuedTimestamp.dateValue(),
+                                returnedTimestamp: currentDate,
+                                fineAmount: fineAmount,
+                                finePaid: finePaid
+                            )
+                            
+                            batch.setData(historyData, forDocument: historyRef)
+                            
+                            // Delete from issued collection
+                            batch.deleteDocument(issuedBookRef)
+                            
+                            // Update book counts
+                            let bookRef = self.viewModel.db.collection("books").document(bookID)
+                            batch.updateData([
+                                "issuedCount": FieldValue.increment(Int64(-1)),
+                                "unreservedCount": FieldValue.increment(Int64(1))
+                            ], forDocument: bookRef)
+                            
+                            // Update or delete the fine record
+                            let fineRef = self.viewModel.db.collection("members")
+                                .document(actualMemberId)
+                                .collection("userbooks")
+                                .document("collection")
+                                .collection("fines")
+                                .document(bookID)
+                            
+                            // If fine was paid (or no fine exists), delete the fine record
+                            // Otherwise mark it as paid
+                            if finePaid || self.fine == nil {
+                                batch.deleteDocument(fineRef)
+                            } else if let fine = self.fine {
+                                batch.updateData([
+                                    "isPaid": true,
+                                    "lastCalculated": Timestamp(date: currentDate)
+                                ], forDocument: fineRef)
+                            }
+                            
+                            // Commit the batch
+                            batch.commit { error in
+                                self.isLoading = false
+                                
+                                if let error = error {
+                                    self.errorMessage = "Failed to process return: \(error.localizedDescription)"
+                                    print("Batch commit error: \(error.localizedDescription)")
+                                    return
+                                }
+                                
+                                // Success - update stats and record activity
+                                self.viewModel.returnedCount += 1
+                                self.viewModel.loadData() // Refresh all stats
+                                
+                                // Add to recent activities using the new method
+                                self.viewModel.addReturnActivity(
+                                    bookID: bookID,
+                                    bookTitle: book.title,
+                                    memberID: scannedMemberId,
+                                    fineAmount: fineAmount
+                                )
+                                
+                                // Dismiss the view
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    self.dismiss()
+                                }
+                            }
+                        }
+                    }
                 }
-                
-                // Continue with found member ID
-                self.continueBookReturn(scannedMemberId: scannedMemberId, actualMemberId: actualMemberId, book: book)
-            }
-    }
-    
-    // Helper method to continue with book return after member is found
-    private func continueBookReturn(scannedMemberId: String, actualMemberId: String, book: BookDetails) {
-        let bookID = book.id
-        
-        // Get the issued document path
-        let issuedBookRef = viewModel.db.collection("members")
-            .document(actualMemberId)
-            .collection("userbooks")
-            .document("collection")
-            .collection("issued")
-            .document(bookID)
-        
-        // Get the issued timestamp from the issued document
-        issuedBookRef.getDocument { issuedDoc, error in
-            if let error = error {
-                self.isLoading = false
-                self.errorMessage = "Error getting issued data: \(error.localizedDescription)"
-                print("Error getting issued doc: \(error.localizedDescription)")
-                return
-            }
-            
-            guard let issuedData = issuedDoc?.data() else {
-                self.isLoading = false
-                self.errorMessage = "Book issue data not found"
-                print("No data in issued document")
-                return
-            }
-            
-            print("Found issued data: \(issuedData)")
-            
-            // Create a batch to ensure all operations succeed or fail together
-            let batch = self.viewModel.db.batch()
-            
-            let requestedTimestamp = issuedData["requestedTimestamp"] as? Timestamp ?? Timestamp(date: Date())
-            let issuedTimestamp = issuedData["issuedTimestamp"] as? Timestamp ?? Timestamp(date: Date())
-            
-            // Add history record
-            let historyRef = self.viewModel.db.collection("members")
-                .document(actualMemberId)
-                .collection("userbooks")
-                .document("collection")
-                .collection("history")
-                .document(bookID)
-            
-            let historyData: [String: Any] = [
-                "bookUUID": bookID,
-                "userId": scannedMemberId, // Use the original ID for data consistency
-                "requestedTimestamp": requestedTimestamp,
-                "issuedTimestamp": issuedTimestamp,
-                "returnedTimestamp": Timestamp(date: Date()),
-                "endTimestamp": Timestamp(date: Date()),
-                "status": "returned"
-            ]
-            
-            batch.setData(historyData, forDocument: historyRef)
-            
-            // Delete from issued collection
-            batch.deleteDocument(issuedBookRef)
-            
-            // Update book counts
-            let bookRef = self.viewModel.db.collection("books").document(bookID)
-            batch.updateData([
-                "issuedCount": FieldValue.increment(Int64(-1)),
-                "unreservedCount": FieldValue.increment(Int64(1))
-            ], forDocument: bookRef)
-            
-            // Commit the batch
-            batch.commit { error in
-                self.isLoading = false
-                
-                if let error = error {
-                    self.errorMessage = "Failed to process return: \(error.localizedDescription)"
-                    print("Batch commit error: \(error.localizedDescription)")
-                    return
-                }
-                
-                // Success - update stats and dismiss the view
-                self.viewModel.returnedCount += 1
-                self.viewModel.loadData() // Refresh all stats
-                
-                // Add to recent activities
-                self.viewModel.addReturnActivity(bookID: bookID, bookTitle: book.title, memberID: scannedMemberId)
-                
-                // Dismiss the view
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.dismiss()
-                }
-            }
-        }
-    }
-}

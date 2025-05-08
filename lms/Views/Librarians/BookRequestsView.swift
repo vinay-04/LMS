@@ -1,11 +1,9 @@
-
 //
 //  BookRequestViews.swift
 //  lms
 //
 //  Created by user@30 on 03/05/25.
 //
-
 
 import SwiftUI
 
@@ -14,22 +12,38 @@ struct BookRequestsView: View {
     @StateObject private var viewModel = BookRequestViewModel()
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color(.systemBackground).edgesIgnoringSafeArea(.all)
+        ZStack {
+            Color(UIColor.systemGroupedBackground).edgesIgnoringSafeArea(.all)
+            
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                Text("Reservation Requests")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+                    .padding(.bottom, 20)
                 
-                VStack {
-                    if viewModel.isLoading {
-                        ProgressView("Loading requests...")
+                // Content
+                if viewModel.isLoading {
+                    VStack {
+                        ProgressView()
+                            .scaleEffect(1.5)
                             .padding()
-                    } else if viewModel.requestedBooks.isEmpty {
-                        ContentUnavailableView(
-                            "No Book Requests",
-                            systemImage: "book.closed",
-                            description: Text("There are no pending book reservation requests.")
-                        )
-                    } else {
-                        List {
+                        
+                        Text("Loading requests...")
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.requestedBooks.isEmpty {
+                    ContentUnavailableView(
+                        "No Book Requests",
+                        systemImage: "book.closed",
+                        description: Text("There are no pending book reservation requests.")
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
                             ForEach(viewModel.requestedBooks) { request in
                                 BookRequestRow(request: request)
                                     .contentShape(Rectangle())
@@ -39,28 +53,30 @@ struct BookRequestsView: View {
                                     }
                             }
                         }
-                        .listStyle(.plain)
-                        .refreshable {
-                            viewModel.fetchRequestedBooks()
-                        }
+                        .padding(.vertical)
                     }
-                    
-                    if !viewModel.errorMessage.isEmpty {
-                        Text(viewModel.errorMessage)
-                            .foregroundColor(.red)
-                            .padding()
+                    .refreshable {
+                        viewModel.fetchRequestedBooks()
                     }
                 }
+                
+                if !viewModel.errorMessage.isEmpty {
+                    Text(viewModel.errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+                
+                Spacer()
             }
-            .navigationTitle("Reservation Requests")
-            .sheet(isPresented: $viewModel.showDetailView) {
-                if let request = viewModel.selectedRequest, let book = viewModel.selectedBook {
-                    BookRequestDetailView(
-                        viewModel: viewModel,
-                        request: request,
-                        book: book
-                    )
-                }
+        }
+        .navigationBarHidden(true)
+        .sheet(isPresented: $viewModel.showDetailView) {
+            if let request = viewModel.selectedRequest, let book = viewModel.selectedBook {
+                BookRequestDetailView(
+                    viewModel: viewModel,
+                    request: request,
+                    book: book
+                )
             }
         }
         .onAppear {
@@ -83,25 +99,25 @@ struct BookRequestRow: View {
                         Image(systemName: "book.closed.fill")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 90)
+                            .frame(width: 80, height: 110)
                             .foregroundColor(.gray)
                     case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 90)
+                            .frame(width: 80, height: 110)
                             .cornerRadius(5)
                     case .failure:
                         Image(systemName: "book.closed.fill")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 90)
+                            .frame(width: 80, height: 110)
                             .foregroundColor(.gray)
                     @unknown default:
                         Image(systemName: "book.closed.fill")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 90)
+                            .frame(width: 80, height: 110)
                             .foregroundColor(.gray)
                     }
                 }
@@ -109,30 +125,54 @@ struct BookRequestRow: View {
                 Image(systemName: "book.closed.fill")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 60, height: 90)
+                    .frame(width: 80, height: 110)
                     .foregroundColor(.gray)
             }
             
-            // Book and User Info
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
+                // Book Title
                 Text(request.bookName ?? "Unknown Book")
-                    .font(.headline)
-                    .lineLimit(2)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .padding(.bottom, 5)
                 
-                Text("Requested by: \(request.userName ?? "Unknown User")")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text("Requested on: \(request.requestDateFormatted)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Requested Info
+                Group {
+                    HStack(alignment: .top, spacing: 5) {
+                        Text("Requested by:")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(width: 100, alignment: .leading)
+                        
+                        Text(request.userName ?? "Unknown User")
+                            .font(.subheadline)
+                    }
+                    
+                    HStack(alignment: .top, spacing: 5) {
+                        Text("Requested on:")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .frame(width: 100, alignment: .leading)
+                        
+                        Text(request.requestDateFormatted)
+                            .font(.subheadline)
+                    }
+                }
             }
             
             Spacer()
             
             Image(systemName: "chevron.right")
                 .foregroundColor(.gray)
+                .font(.system(size: 14))
         }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+        )
+        .padding(.horizontal)
         .padding(.vertical, 5)
     }
 }
@@ -162,6 +202,7 @@ struct BookRequestDetailView: View {
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 150, height: 200)
                                     .cornerRadius(8)
+                                    .shadow(radius: 3)
                             case .failure:
                                 Image(systemName: "book.closed.fill")
                                     .resizable()
@@ -317,12 +358,5 @@ struct BookCountRow: View {
             Text("\(value)")
                 .font(.system(.body, design: .monospaced))
         }
-    }
-}
-
-// Preview provider
-struct BookRequestsView_Previews: PreviewProvider {
-    static var previews: some View {
-        BookRequestsView()
     }
 }

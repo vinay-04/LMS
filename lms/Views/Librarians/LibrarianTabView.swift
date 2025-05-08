@@ -1,4 +1,3 @@
-
 //
 //  LibrarianTabView.swift
 //  lms
@@ -38,7 +37,7 @@ struct LibrarianTabView: View {
                 }
                 .tag(2)
         }
-        .accentColor(.blue) // Set the selected tab color
+        .accentColor(Color(.systemIndigo)) // Updated to use systemIndigo
     }
 }
 

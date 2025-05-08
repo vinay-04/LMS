@@ -1,10 +1,3 @@
-//
-//  LibraryView.swift
-//  lms
-//
-//  Created by user@30 on 03/05/25.
-//
-
 import SwiftUI
 import AVFoundation
 
@@ -24,39 +17,48 @@ struct LibraryView: View {
     
     var body: some View {
         NavigationView {
-            VStack {
-                // Search Bar
-                SearchBar(text: $searchText, onSearchButtonClicked: {
-                    viewModel.searchBooks(query: searchText)
-                })
-                .padding(.horizontal)
+            ZStack(alignment: .bottomTrailing) {
+                // Main content with fixed top spacer
+                VStack(spacing: 0) {
+                    // Fixed spacer to prevent jumping
+                    Color.clear
+                        .frame(height: 1)
+                        .background(Color(.systemBackground))
+                    
+                    // Search Bar
+                    SearchBar(text: $searchText, onSearchButtonClicked: {
+                        viewModel.searchBooks(query: searchText)
+                    })
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // Books List
+                    if viewModel.isSearching {
+                        SearchResultsView(books: viewModel.searchResults, viewModel: viewModel)
+                    } else {
+                        BookListView(books: viewModel.books, viewModel: viewModel)
+                    }
+                    
+                    Spacer() // Push content up
+                }
                 
-                // Add Book Button
+                // Floating Action Button
                 Button(action: {
-                    print("➕ Add New Book button tapped")
                     showingAddBookSheet = true
                 }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add New Book")
-                    }
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(Color.blue)
-                    .cornerRadius(10)
+                    Image(systemName: "plus")
+                        .font(.title.weight(.semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.indigo)
+                        .clipShape(Circle())
+                        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 4)
+                        .padding(24)
                 }
-                .padding(.bottom)
-                
-                // Books List
-                if viewModel.isSearching {
-                    // Display search results
-                    SearchResultsView(books: viewModel.searchResults, viewModel: viewModel)
-                } else {
-                    // Display regular book list
-                    BookListView(books: viewModel.books, viewModel: viewModel)
-                }
+                .accessibilityLabel("Add new book")
             }
             .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingAddBookSheet) {
                 AddBookView(
                     viewModel: viewModel,
@@ -73,7 +75,6 @@ struct LibraryView: View {
                 LibraryBarcodeScannerView(scannedCode: $scannedCode)
                     .onDisappear {
                         if !scannedCode.isEmpty {
-                            print("📷 Processing scanned ISBN: \(scannedCode)")
                             processScannedISBN()
                         }
                     }
@@ -96,14 +97,13 @@ struct LibraryView: View {
                         showingEditView = true
                     },
                     secondaryButton: .cancel(Text("Cancel")) {
-                        // Reset state
                         scannedCode = ""
                         viewModel.existingBook = nil
                     }
                 )
             }
             .overlay(
-                ZStack {
+                Group {
                     if showFeedback {
                         VStack {
                             Spacer()
@@ -112,13 +112,23 @@ struct LibraryView: View {
                                 Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                                     .foregroundColor(isSuccess ? .green : .red)
                                 Text(feedbackMessage)
+                                    .font(.subheadline)
                             }
-                            .padding()
-                            .background(isSuccess ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
-                            .cornerRadius(10)
-                            .padding(.bottom, 20)
+                            .padding(12)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
+                            .shadow(radius: 2)
+                            .padding(.bottom, 24)
+                            .transition(.move(edge: .bottom))
+                            .onAppear {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                    withAnimation {
+                                        showFeedback = false
+                                    }
+                                }
+                            }
                         }
-                        .padding(.horizontal)
+                        .animation(.easeInOut, value: showFeedback)
                     }
                 }
             )
@@ -127,46 +137,21 @@ struct LibraryView: View {
                     feedbackMessage = errorMessage
                     isSuccess = false
                     showFeedback = true
-                    
-                    // Auto dismiss after 3 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        showFeedback = false
-                        viewModel.errorMessage = nil
-                    }
                 }
             }
-            .onAppear {
-                print("📚 LibraryView appeared")
-            }
         }
+        .navigationViewStyle(.stack)
     }
     
     private func processScannedISBN() {
-        print("🔍 Looking up scanned ISBN: \(scannedCode)")
-        
         viewModel.fetchBookByISBN(isbn: scannedCode) { success, book in
             if success, let bookInfo = book {
-                print("✅ Found book in Google Books API: \(bookInfo.name)")
-                
-                // Show book preview instead of directly adding
                 previewBook = bookInfo
                 showingBookPreview = true
-            } else if let existingBook = viewModel.existingBook, viewModel.showDuplicateAlert {
-                // The duplicate alert will be shown automatically via the viewModel
-                print("⚠️ Book with ISBN \(scannedCode) already exists: \(existingBook.name)")
-                // No need to do anything else here as the alert binding will trigger the alert
-            } else {
-                print("❌ Failed to find book for ISBN: \(scannedCode)")
-                
-                // Show feedback
+            } else if viewModel.existingBook == nil {
                 feedbackMessage = "Could not find book with ISBN: \(scannedCode)"
                 isSuccess = false
                 showFeedback = true
-                
-                // Auto dismiss after 3 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    showFeedback = false
-                }
             }
         }
     }

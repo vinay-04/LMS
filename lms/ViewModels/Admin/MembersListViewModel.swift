@@ -43,19 +43,39 @@ class MembersListViewModel: ObservableObject {
                     let data = doc.data()
                     let id = doc.documentID
                     
-                    // Extract name - BUT directly check the email for the problematic record
-                    let email = data["email"] as? String ?? "No email"
-                    
-                    // Special case for the known problematic record
-                    let name: String
-                    if email == "sus69here@gmail.com" {
-                        name = "Aviral saxena"
-                    } else {
-                        // For other records, use normal extraction
-                        name = data["name"] as? String ??
-                               data["fullName"] as? String ??
-                               data["full_name"] as? String ??
-                               "Unknown"
+                    // Check if this is a member document with fullName field (as seen in screenshot)
+                    if let fullName = data["full_name"] as? String {
+                        let id = data["id"] as? String ?? docId
+                        let phone = data["phone"] as? String ?? ""
+                        let email = data["email"] as? String ?? ""
+                        let role = data["role"] as? String ?? "Member"
+                        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                        
+                        return Member(
+                            id: id,
+                            name: fullName,
+                            phone: phone,
+                            email: email,
+                            role: role,
+                            createdAt: createdAt
+                        )
+                    }
+                    // Alternative: Check if document has name field instead
+                    else if let name = data["name"] as? String {
+                        let id = data["id"] as? String ?? docId
+                        let phone = data["phone"] as? String ?? ""
+                        let email = data["email"] as? String ?? ""
+                        let role = data["role"] as? String ?? "Member"
+                        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                        
+                        return Member(
+                            id: id,
+                            name: name,
+                            phone: phone,
+                            email: email,
+                            role: role,
+                            createdAt: createdAt
+                        )
                     }
                     
                     let phone = data["phone"] as? String ?? "No phone"

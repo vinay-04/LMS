@@ -491,6 +491,155 @@ struct BookLocation: Codable {
     var floor: Int
     var shelf: String
 }
+
+// MARK: - Fine Model
+
+// Model to represent a fine in the system
+struct Fine: Identifiable {
+    let id: String // This will be the book UUID
+    let bookUUID: String
+    let bookTitle: String
+    let userId: String
+    let issuedTimestamp: Date
+    var daysOverdue: Int
+    var fineAmount: Double
+    var isPaid: Bool
+    var lastCalculated: Date
+    
+    // Calculate fine amount based on days overdue (₹10 per day after 15 days)
+    static func calculateFine(issuedDate: Date, currentDate: Date = Date()) -> (days: Int, amount: Double) {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: issuedDate, to: currentDate)
+        let totalDays = components.day ?? 0
+        
+        // Free for first 15 days
+        let daysOverdue = max(0, totalDays - 15)
+        let fineAmount = Double(daysOverdue) * 10.0 // ₹10 per day
+        
+        return (daysOverdue, fineAmount)
+    }
+    
+    // Create a fine from Firestore document
+    static func fromFirestore(document: QueryDocumentSnapshot) -> Fine? {
+        let data = document.data()
+        
+        guard
+            let bookUUID = data["bookUUID"] as? String,
+            let bookTitle = data["bookTitle"] as? String,
+            let userId = data["userId"] as? String,
+            let issuedTimestamp = data["issuedTimestamp"] as? Timestamp,
+            let daysOverdue = data["daysOverdue"] as? Int,
+            let fineAmount = data["fineAmount"] as? Double,
+            let isPaid = data["isPaid"] as? Bool,
+            let lastCalculated = data["lastCalculated"] as? Timestamp
+        else {
+            return nil
+        }
+        
+        return Fine(
+            id: document.documentID,
+            bookUUID: bookUUID,
+            bookTitle: bookTitle,
+            userId: userId,
+            issuedTimestamp: issuedTimestamp.dateValue(),
+            daysOverdue: daysOverdue,
+            fineAmount: fineAmount,
+            isPaid: isPaid,
+            lastCalculated: lastCalculated.dateValue()
+        )
+    }
+    
+    // Convert to Firestore data
+    func toFirestoreData() -> [String: Any] {
+        return [
+            "bookUUID": bookUUID,
+            "bookTitle": bookTitle,
+            "userId": userId,
+            "issuedTimestamp": Timestamp(date: issuedTimestamp),
+            "daysOverdue": daysOverdue,
+            "fineAmount": fineAmount,
+            "isPaid": isPaid,
+            "lastCalculated": Timestamp(date: lastCalculated)
+        ]
+    }
+}
+
+// Extension for BookHistory to include fine information
+extension BookHistory {
+    static func createReturnedWithFine(
+        bookID: String,
+        userID: String,
+        requestTimestamp: Date,
+        issuedTimestamp: Date,
+        returnedTimestamp: Date,
+        fineAmount: Double?,
+        finePaid: Bool
+    ) -> [String: Any] {
+        var historyData: [String: Any] = [
+            "bookUUID": bookID,
+            "userId": userID,
+            "requestedTimestamp": Timestamp(date: requestTimestamp),
+            "issuedTimestamp": Timestamp(date: issuedTimestamp),
+            "returnedTimestamp": Timestamp(date: returnedTimestamp),
+            "endTimestamp": Timestamp(date: returnedTimestamp),
+            "status": "returned"
+        ]
+        
+        // Add fine information if there was a fine
+        if let fineAmount = fineAmount, fineAmount > 0 {
+            historyData["fineAmount"] = fineAmount
+            historyData["finePaid"] = finePaid
+        }
+        
+        return historyData
+    }
+}
+
+// Activity model for the database
+struct LibraryActivity: Identifiable, Codable {
+    var id: String // Document ID in Firestore
+    var type: ActivityType
+    var bookID: String
+    var bookTitle: String
+    var memberID: String
+    var memberName: String?
+    var timestamp: Date
+    var notes: String?
+    
+    enum ActivityType: String, Codable {
+        case issue = "issue"
+        case `return` = "return"
+        case requestApproved = "request_approved"
+        case requestRejected = "request_rejected"
+        
+        var displayText: String {
+            switch self {
+            case .issue: return "Borrowed"
+            case .return: return "Returned"
+            case .requestApproved: return "Request Approved"
+            case .requestRejected: return "Request Rejected"
+            }
+        }
+        
+        var iconName: String {
+            switch self {
+            case .issue: return "arrow.up.forward.circle.fill"
+            case .return: return "arrow.down.forward.circle.fill"
+            case .requestApproved: return "checkmark.circle.fill"
+            case .requestRejected: return "xmark.circle.fill"
+            }
+        }
+        
+        var colorName: String {
+            switch self {
+            case .issue: return "orange"
+            case .return: return "green"
+            case .requestApproved: return "blue"
+            case .requestRejected: return "red"
+            }
+        }
+    }
+}
 // MARK: - Color Helper
 
 extension Color {

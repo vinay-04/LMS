@@ -309,6 +309,7 @@ struct BookIssueProcessView: View {
     }
 
     // Helper method to continue with book issue after member is found
+    // Update the continueBookIssue method in BookIssueProcessView.swift
     private func continueBookIssue(bookID: String, book: BookDetails, scannedMemberId: String, actualMemberId: String) {
         // Create a batch to ensure all operations succeed or fail together
         let batch = viewModel.db.batch()
@@ -351,12 +352,20 @@ struct BookIssueProcessView: View {
                 return
             }
             
-            // Success - update stats and dismiss the view
+            // Success - update stats and record activity
             viewModel.borrowedCount += 1
             viewModel.loadData() // Refresh all stats
             
-            // Add to recent activities
+            // Add to recent activities using the new method
             viewModel.addIssueActivity(bookID: bookID, bookTitle: book.title, memberID: scannedMemberId)
+            
+            // Create a fine record (initially with zero amount)
+            viewModel.createFineRecord(
+                bookID: bookID,
+                bookTitle: book.title,
+                memberID: scannedMemberId,
+                issuedTimestamp: currentDate
+            )
             
             // Dismiss the view
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
