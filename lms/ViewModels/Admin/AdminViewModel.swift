@@ -2,14 +2,14 @@
 //  AdminViewModel.swift
 //  lms
 //
-//  Created by VR on 24/04/25.
+//  Created by admin19 on 06/05/25.
 //
 
-import Appwrite
-import Foundation
-import JSONCodable
 import SwiftUI
+import Foundation
+import FirebaseFirestore
 
+@MainActor
 class AdminViewModel: ObservableObject {
     @Published var users: [User] = []
     @Published var isLoading: Bool = false
@@ -17,56 +17,37 @@ class AdminViewModel: ObservableObject {
     @Published var actionError: String?
     @Published var successMessage: String?
 
-    private let client: Client
-    private let databases: Databases
+    private let db = Firestore.firestore()
 
-    init() {
-        self.client = Client()
-            .setEndpoint(AppwriteConfig.endpoint)
-            .setProject(AppwriteConfig.projectId)
-            .setSelfSigned(true)
-
-        self.databases = Databases(client)
-    }
-
-    @MainActor
     func fetchUsers() async {
         isLoading = true
         error = nil
 
         do {
-            let result = try await databases.listDocuments(
-                databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                queries: []
-            )
-
-            let fetchedUsers = result.documents.compactMap { document -> User? in
+            let snap = try await db.collection("members").getDocuments()
+            users = snap.documents.compactMap { (doc) -> User? in
+                let d = doc.data()
                 guard
-                    let fullName = document.data["full_name"]?.value as? String,
-                    let email = document.data["email"]?.value as? String,
-                    let roleString = document.data["role"]?.value as? String,
-                    let role = UserRole(rawValue: roleString),
-                    let createdAtString = document.data["created_at"]?.value as? String
+                    let fullName = d["full_name"] as? String,
+                    let email    = d["email"] as? String,
+                    let roleStr  = d["role"] as? String,
+                    let role     = UserRole(rawValue: roleStr),
+                    let ts       = d["created_at"] as? Timestamp
                 else {
                     return nil
                 }
 
-                let isVerified = document.data["is_verified"]?.value as? Bool ?? false
-                let mfaEnabled = document.data["mfa_enabled"]?.value as? Bool ?? false
-
-                let userId = document.id
-                let profileImageUrl = document.data["profile_image_url"]?.value as? String
-                let preferences = document.data["preferences"]?.value as? [String: String]
-
-                let dateFormatter = ISO8601DateFormatter()
-                let createdAt = dateFormatter.date(from: createdAtString) ?? Date()
+                let isVerified   = d["is_verified"] as? Bool ?? false
+                let mfaEnabled   = d["mfa_enabled"] as? Bool ?? false
+                let profileImage = d["profile_image_url"] as? String
+                let preferences  = d["preferences"] as? [String:String]
+                let createdAt    = ts.dateValue()
 
                 return User(
-                    id: userId,
+                    id: doc.documentID,
                     fullName: fullName,
                     email: email,
-                    profileImageUrl: profileImageUrl,
+                    profileImageUrl: profileImage,
                     role: role,
                     isVerified: isVerified,
                     mfaEnabled: mfaEnabled,
@@ -74,8 +55,6 @@ class AdminViewModel: ObservableObject {
                     createdAt: createdAt
                 )
             }
-
-            self.users = fetchedUsers
         } catch {
             self.error = "Failed to fetch users: \(error.localizedDescription)"
         }
@@ -83,30 +62,21 @@ class AdminViewModel: ObservableObject {
         isLoading = false
     }
 
-    @MainActor
     func updateUserRole(userId: String, newRole: UserRole) async {
         actionError = nil
         successMessage = nil
 
         do {
-            // Update the user role in the database
-            try await databases.updateDocument(
-                databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: userId,
-                data: [
-                    "role": newRole.rawValue
-                ]
-            )
+            try await db.collection("members").document(userId)
+                .updateData(["role": newRole.rawValue])
 
-            // Update the local users array
-            if let index = users.firstIndex(where: { $0.id == userId }) {
-                users[index].role = newRole
+            if let idx = users.firstIndex(where: { $0.id == userId }) {
+                users[idx].role = newRole
             }
 
             successMessage = "Updated role for user successfully"
-
-            // Auto-dismiss the success message after 3 seconds
+            
+            // Auto‐dismiss after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 withAnimation {
                     self.successMessage = nil

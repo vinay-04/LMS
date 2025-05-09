@@ -1,8 +1,8 @@
 //
-//  ContentView.swift
+//  AppState.swift
 //  lms
 //
-//  Created by VR on 24/04/25.
+//  Created by VR on 06/05/25.
 //
 
 import SwiftUI
@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var showOnboarding: Bool = false
 
     var body: some View {
-        Group {
+        VStack {
             switch authViewModel.authState {
             case .unauthenticated, .error:
                 SignInView()
@@ -22,7 +22,6 @@ struct ContentView: View {
                     .progressViewStyle(CircularProgressViewStyle())
 
             case .mfaRequired:
-
                 if let challenge = authViewModel.mfaChallenge {
                     mfaVerificationView()
                         .environmentObject(authViewModel)
@@ -38,11 +37,11 @@ struct ContentView: View {
                 VStack {
                     switch user.role {
                     case .admin:
-                        AdminHomeView(user: user)
+                        MainTabView(user: user)
                     case .librarian:
-                        LibrarianHomeView(user: user)
+                        LibrarianTabView(user: user)
                     case .member:
-                        MemberHomeView(user: user)
+                        MemberView(user: user)
                     }
                 }
                 .transition(.slide)
@@ -107,5 +106,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel()) // Ensure environmentObject is passed
 }
